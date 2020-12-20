@@ -16,7 +16,7 @@ class Tile:
 
     def rotate_90(self):
         self.data = [
-            "".join([self.data[j][i] for j in range(self.shape[0] - 1, -1, -1)])
+            "".join([self.data[j][i] for j in reversed(range(self.shape[0]))])
             for i in range(self.shape[1])
         ]
         self._get_borders()
