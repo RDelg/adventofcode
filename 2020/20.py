@@ -1,3 +1,7 @@
+from itertools import accumulate
+import operator
+
+
 class Tile:
     def __init__(self, str_data: str):
         str_data = str_data.split(":\n")
@@ -29,14 +33,41 @@ class Tile:
         return "\n".join(self.data)
 
 
-with open("data/20_test.txt", "r") as file:
+with open("data/20.txt", "r") as file:
     data = file.read().split("\n\n")
+tiles_bag = [Tile(x) for x in data]
 
-x = Tile(data[0])
-print(x, "\n")
 
-x.rotate_90()
-print(x, "\n")
+def find_context(tiles_bag, tile):
+    right = []
+    left = []
+    up = []
+    down = []
+    for t in tiles_bag:
+        for _ in range(2):
+            for _ in range(4):
+                if tile.right == t.left:
+                    right.append(t)
+                elif tile.left == t.right:
+                    left.append(t)
+                elif tile.up == t.down:
+                    up.append(t)
+                elif tile.down == t.up:
+                    down.append(t)
+                t.rotate_90()
+            t.flip_v()
+    assert len(right) <= 1
+    assert len(left) <= 1
+    assert len(up) <= 1
+    assert len(down) <= 1
+    return right, left, up, down
 
-x.flip_v()
-print(x, "\n")
+
+corners = []
+for tile in tiles_bag:
+    right, left, up, down = find_context(tiles_bag, tile)
+    if len(right) + len(left) + len(up) + len(down) == 2:
+        corners.append(tile)
+
+print(corners)
+print(list(accumulate([int(x.id) for x in corners], operator.mul))[-1])
