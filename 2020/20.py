@@ -1,6 +1,6 @@
 import operator
 from typing import List
-from itertools import accumulate
+from functools import reduce
 
 
 class Tile:
@@ -39,44 +39,50 @@ with open("data/20.txt", "r") as file:
 tiles_bag = [Tile(x) for x in data]
 
 
-def find_context(tiles_bag, tile):
-    right = []
-    left = []
-    up = []
-    down = []
-    for t in tiles_bag:
-        for _ in range(2):
-            for _ in range(4):
-                if tile.right == t.left:
-                    right.append(t)
-                elif tile.left == t.right:
-                    left.append(t)
-                elif tile.up == t.down:
-                    up.append(t)
-                elif tile.down == t.up:
-                    down.append(t)
-                t.rotate_90()
-            t.flip_v()
-    assert len(right) <= 1
-    assert len(left) <= 1
-    assert len(up) <= 1
-    assert len(down) <= 1
-    return right, left, up, down
+# def find_context(tiles_bag, tile):
+#     right = []
+#     left = []
+#     up = []
+#     down = []
+#     for t in tiles_bag:
+#         for _ in range(2):
+#             for _ in range(4):
+#                 if tile.right == t.left:
+#                     right.append(t)
+#                 elif tile.left == t.right:
+#                     left.append(t)
+#                 elif tile.up == t.down:
+#                     up.append(t)
+#                 elif tile.down == t.up:
+#                     down.append(t)
+#                 t.rotate_90()
+#             t.flip_v()
+#     assert len(right) <= 1
+#     assert len(left) <= 1
+#     assert len(up) <= 1
+#     assert len(down) <= 1
+#     return right, left, up, down
 
 
-corners = []
-for tile in tiles_bag:
-    right, left, up, down = find_context(tiles_bag, tile)
-    if len(right) + len(left) + len(up) + len(down) == 2:
-        corners.append(tile)
+# corners = []
+# for tile in tiles_bag:
+#     right, left, up, down = find_context(tiles_bag, tile)
+#     if len(right) + len(left) + len(up) + len(down) == 2:
+#         corners.append(tile)
 
-print([x.id for x in corners])
-print(list(accumulate([int(x.id) for x in corners], operator.mul))[-1])
+# print([x.id for x in corners])
+# print(
+#     reduce(
+#         operator.mul,
+#         [int(x.id) for x in corners],
+#     )
+# )
 
 
 class Image:
     def __init__(self, tiles: List[Tile]):
-        tile = tiles[0]
+        self.tiles = tiles
+        tile = self.tiles[0]
         self.image = [[tile]]
         self.shape = (1, 1)
         self.set_context(0, 0)
@@ -104,7 +110,7 @@ class Image:
         assert 0 <= y < self.shape[1]
         right = left = up = down = "|"
         tile = self.image[x][y]
-        for t in tiles_bag:
+        for t in self.tiles:
             found = False
             for _ in range(2):
                 for _ in range(4):
@@ -165,18 +171,45 @@ class Image:
         return right, left, up, down
 
     def fill_image(self):
-        for i in range(self.shape[0]):
-            for j in range(self.shape[1]):
-                if self.image[i][j] is None:
-                    right, left, up, down = self.get_context(i, j)
-                    if isinstance(right, Tile):
-                        self.set_context(i, j + 1)
-                    elif isinstance(left, Tile):
-                        self.set_context(i, j - 1)
-                    elif isinstance(up, Tile):
-                        self.set_context(i - 1, j)
-                    elif isinstance(down, Tile):
-                        self.set_context(i + 1, j)
+        while not self._are_borders_completed():
+            for i in range(self.shape[0]):
+                for j in range(self.shape[1]):
+                    if self.image[i][j] is None:
+                        right, left, up, down = self.get_context(i, j)
+                        if isinstance(right, Tile):
+                            self.set_context(i, j + 1)
+                        elif isinstance(left, Tile):
+                            self.set_context(i, j - 1)
+                        elif isinstance(up, Tile):
+                            self.set_context(i - 1, j)
+                        elif isinstance(down, Tile):
+                            self.set_context(i + 1, j)
+
+    def _are_borders_completed(self):
+        return not bool(
+            reduce(
+                operator.add,
+                [1 if x is not None and x != "|" else 0 for x in self.image[0]],
+            )
+            + reduce(
+                operator.add,
+                [1 if x is not None and x != "|" else 0 for x in self.image[-1]],
+            )
+            + reduce(
+                operator.add,
+                [
+                    1 if x is not None and x != "|" else 0
+                    for x in [x[0] for x in self.image]
+                ],
+            )
+            + reduce(
+                operator.add,
+                [
+                    1 if x is not None and x != "|" else 0
+                    for x in [x[-1] for x in self.image]
+                ],
+            )
+        )
 
     def __repr__(self) -> str:
         r = []
@@ -193,6 +226,5 @@ class Image:
 
 
 x = Image(tiles_bag)
-for _ in range(1000):
-    x.fill_image()
+x.fill_image()
 print(x)
