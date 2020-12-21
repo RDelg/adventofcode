@@ -1,5 +1,6 @@
-from itertools import accumulate
 import operator
+from typing import List
+from itertools import accumulate
 
 
 class Tile:
@@ -69,5 +70,129 @@ for tile in tiles_bag:
     if len(right) + len(left) + len(up) + len(down) == 2:
         corners.append(tile)
 
-print(corners)
+print([x.id for x in corners])
 print(list(accumulate([int(x.id) for x in corners], operator.mul))[-1])
+
+
+class Image:
+    def __init__(self, tiles: List[Tile]):
+        tile = tiles[0]
+        self.image = [[tile]]
+        self.shape = (1, 1)
+        self.set_context(0, 0)
+
+    def extend_right(self):
+        for i in range(self.shape[0]):
+            self.image[i].append(None)
+        self.shape = (self.shape[0], self.shape[1] + 1)
+
+    def extend_left(self):
+        for i in range(self.shape[0]):
+            self.image[i].insert(0, None)
+        self.shape = (self.shape[0], self.shape[1] + 1)
+
+    def extend_up(self):
+        self.image.insert(0, [None] * self.shape[1])
+        self.shape = (self.shape[0] + 1, self.shape[1])
+
+    def extend_down(self):
+        self.image.append([None] * self.shape[1])
+        self.shape = (self.shape[0] + 1, self.shape[1])
+
+    def set_context(self, x, y):
+        assert 0 <= x < self.shape[0]
+        assert 0 <= y < self.shape[1]
+        right = left = up = down = "|"
+        tile = self.image[x][y]
+        for t in tiles_bag:
+            found = False
+            for _ in range(2):
+                for _ in range(4):
+                    if tile.right == t.left:
+                        right = t
+                        found = True
+                        break
+                    elif tile.left == t.right:
+                        left = t
+                        found = True
+                        break
+                    elif tile.up == t.down:
+                        up = t
+                        found = True
+                        break
+                    elif tile.down == t.up:
+                        down = t
+                        found = True
+                        break
+                    else:
+                        t.rotate_90()
+                if found:
+                    break
+                t.flip_v()
+
+        x, y = self.extend(x, y)
+        self.image[x][y + 1] = right
+        self.image[x][y - 1] = left
+        self.image[x - 1][y] = up
+        self.image[x + 1][y] = down
+
+    def extend(self, x, y):
+        if y + 1 >= self.shape[1]:
+            self.extend_right()
+        if y - 1 < 0:
+            self.extend_left()
+            y += 1
+        if x + 1 >= self.shape[0]:
+            self.extend_down()
+        if x - 1 < 0:
+            self.extend_up()
+            x += 1
+        return x, y
+
+    def get_context(self, x, y):
+        assert 0 <= x < self.shape[0]
+        assert 0 <= y < self.shape[1]
+        right = left = up = down = None
+        if y < self.shape[1] - 1 and (c := self.image[x][y + 1]) is not None:
+            right = c
+        if y > 0 and (c := self.image[x][y - 1]) is not None:
+            left = c
+        if x > 0 and (c := self.image[x - 1][y]) is not None:
+            up = c
+        if x < self.shape[0] - 1 and (c := self.image[x + 1][y]) is not None:
+            down = c
+
+        return right, left, up, down
+
+    def fill_image(self):
+        for i in range(self.shape[0]):
+            for j in range(self.shape[1]):
+                if self.image[i][j] is None:
+                    right, left, up, down = self.get_context(i, j)
+                    if isinstance(right, Tile):
+                        self.set_context(i, j + 1)
+                    elif isinstance(left, Tile):
+                        self.set_context(i, j - 1)
+                    elif isinstance(up, Tile):
+                        self.set_context(i - 1, j)
+                    elif isinstance(down, Tile):
+                        self.set_context(i + 1, j)
+
+    def __repr__(self) -> str:
+        r = []
+        for i in range(self.shape[0]):
+            r.append(
+                " ".join(
+                    [
+                        x.id if isinstance(x, Tile) else "None" if x is None else x
+                        for x in self.image[i]
+                    ]
+                )
+            )
+        return "\n".join(r)
+
+
+x = Image(tiles_bag)
+for _ in range(1000):
+    x.fill_image()
+print(x)
