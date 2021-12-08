@@ -1,6 +1,5 @@
 from enum import Enum
 from dataclasses import dataclass
-from typing import List
 
 
 class Direction(str, Enum):
