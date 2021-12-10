@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import List
 
 RAW = """\
 0,9 -> 5,9
@@ -53,11 +52,6 @@ class Grid:
 
     def __repr__(self):
         return str(self)
-
-    def diagonal_linespace(self, start: Point, end: Point) -> List[int]:
-        """
-        Return a list of all the points in the line space between a and b.
-        """
 
     def draw(self, line: Line, include_diagonals: bool = False):
         start = line.start
