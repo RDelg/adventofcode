@@ -122,7 +122,9 @@ if __name__ == "__main__":
     for line in lines_raw:
         grid.draw(line)
 
-    assert sum([sum([y >= 2 for y in x]) for x in grid.grid]) == 5
+    get_points = lambda g: sum([sum([y >= 2 for y in x]) for x in g])
+
+    assert get_points(grid.grid) == 5
 
     grid = Grid(10, 10)
 
@@ -138,17 +140,17 @@ if __name__ == "__main__":
     for line in lines:
         grid.draw(line)
 
-    print(f"Part 1: {sum([sum([y >= 2 for y in x]) for x in grid.grid])}")
+    print(f"Part 1: {get_points(grid.grid)}")
 
     # Part 2
     grid = Grid(10, 10)
 
     for line in lines_raw:
         grid.draw(line, include_diagonals=True)
-    assert sum([sum([y >= 2 for y in x]) for x in grid.grid]) == 12
+    assert get_points(grid.grid) == 12
 
     grid = Grid(989, 989)
     for i, line in enumerate(lines):
         grid.draw(line, include_diagonals=True)
 
-    print(f"Part 2: {sum([sum([y >= 2 for y in x]) for x in grid.grid])}")
+    print(f"Part 2: {get_points(grid.grid)}")
