@@ -1,5 +1,6 @@
-from typing import List, Tuple
-
+from copy import deepcopy
+from typing import List, Tuple, Union
+from typing_extensions import Concatenate
 
 RAW = """\
 7,4,9,5,11,17,23,2,0,14,21,24,10,16,13,6,15,25,12,22,18,20,8,19,3,26,1
@@ -33,16 +34,23 @@ class Board:
         board = [list(map(int, row.split())) for row in board]
         return board
 
-    def __init__(self, board: str):
-        self.board = self._parse_str_board(board)
+    def __init__(self, board: Union[str, "Board"]):
+        self.board = (
+            self._parse_str_board(board)
+            if isinstance(board, str)
+            else deepcopy(board.board)
+        )
         self.n = len(self.board)
         self.m = len(self.board[0])
-        self.board_mask = [
-            [False for _ in range(self.m)] for _ in range(self.n)
-        ]
+        self.board_mask = [[False for _ in range(self.m)] for _ in range(self.n)]
+        self._winner = False
 
     def __repr__(self):
         return "\n".join([" ".join(map(str, row)) for row in self.board])
+
+    @property
+    def already_a_winner(self) -> bool:
+        return self._winner
 
     def check_wining_condition(self, i: int, j: int) -> bool:
         """
@@ -66,7 +74,9 @@ class Board:
             for j in range(self.m):
                 if self.board[i][j] == number:
                     self.board_mask[i][j] = True
-                    return self.check_wining_condition(i, j)
+                    if self.check_wining_condition(i, j):
+                        self._winner = True
+                        return True
         return False
 
     def get_sum_unmasked(self) -> int:
@@ -89,9 +99,7 @@ def parse(raw: str) -> Tuple[List[int], List[Board]]:
     return numbers, boards
 
 
-def find_winning_board(
-    numbers: List[int], boards: List[Board]
-) -> Tuple[int, Board]:
+def find_winning_board(numbers: List[int], boards: List[Board]) -> Tuple[int, Board]:
     for number in numbers:
         for board in boards:
             if board.mark_number(number):
@@ -99,7 +107,26 @@ def find_winning_board(
     return None, None
 
 
+def find_last_winning_board(
+    numbers: List[int], boards: List[Board]
+) -> Tuple[int, Board]:
+    boards = [Board(x) for x in boards]
+    eliminated_boards = 0
+    for number in numbers:
+        for board in boards:
+            if not board.already_a_winner and board.mark_number(number):
+                eliminated_boards += 1
+                if eliminated_boards == len(boards):
+                    return number, board
+    return None, None
+
+
 if __name__ == "__main__":
+
+    # Part 1
+    print("*" * 10)
+    print("Part 1")
+    print("-" * 10)
     numbers, boards = parse(RAW)
     number, winner_board = find_winning_board(numbers, boards)
     assert (winner_board.get_sum_unmasked() * number) == 4512
@@ -107,4 +134,17 @@ if __name__ == "__main__":
     with open("data/04.txt") as f:
         numbers, boards = parse(f.read())
     number, winner_board = find_winning_board(numbers, boards)
+    print(winner_board.get_sum_unmasked() * number)
+
+    # Part 2
+    print("*" * 10)
+    print("Part 2")
+    print("-" * 10)
+    numbers, boards = parse(RAW)
+    number, last_winner_board = find_last_winning_board(numbers, boards)
+    assert (last_winner_board.get_sum_unmasked() * number) == 1924
+
+    with open("data/04.txt") as f:
+        numbers, boards = parse(f.read())
+    number, winner_board = find_last_winning_board(numbers, boards)
     print(winner_board.get_sum_unmasked() * number)
