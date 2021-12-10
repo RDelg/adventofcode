@@ -124,9 +124,6 @@ def find_last_winning_board(
 if __name__ == "__main__":
 
     # Part 1
-    print("*" * 10)
-    print("Part 1")
-    print("-" * 10)
     numbers, boards = parse(RAW)
     number, winner_board = find_winning_board(numbers, boards)
     assert (winner_board.get_sum_unmasked() * number) == 4512
@@ -134,12 +131,9 @@ if __name__ == "__main__":
     with open("data/04.txt") as f:
         numbers, boards = parse(f.read())
     number, winner_board = find_winning_board(numbers, boards)
-    print(winner_board.get_sum_unmasked() * number)
+    print(f"Part 1: {winner_board.get_sum_unmasked() * number}")
 
-    # Part 2
-    print("*" * 10)
-    print("Part 2")
-    print("-" * 10)
+    # Part 2)
     numbers, boards = parse(RAW)
     number, last_winner_board = find_last_winning_board(numbers, boards)
     assert (last_winner_board.get_sum_unmasked() * number) == 1924
@@ -147,4 +141,4 @@ if __name__ == "__main__":
     with open("data/04.txt") as f:
         numbers, boards = parse(f.read())
     number, winner_board = find_last_winning_board(numbers, boards)
-    print(winner_board.get_sum_unmasked() * number)
+    print(f"Part 2: {winner_board.get_sum_unmasked() * number}")
