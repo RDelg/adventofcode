@@ -54,6 +54,9 @@ if __name__ == "__main__":
     print(f"Part 1: {fishes.total()}")
 
     # Part 2
+    fishes = LanternFishSimulator([int(i) for i in RAW.split(",")])
+    fishes.simulate(256)
+    assert (fishes.total()) == 26984457539
     fishes = LanternFishSimulator([int(i) for i in raw.split(",")])
     fishes.simulate(256)
     print(f"Part 2: {fishes.total()}")
