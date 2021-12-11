@@ -19,7 +19,6 @@ class LanternFishSimulator:
     def new_day(self) -> None:
         zeros = self.group[0]
         for i in range(1, self.max_days):
-
             self.group[i - 1] = self.group[i]
         self.group[self.max_days - 1] = zeros
         self.group[self.reset_day] += zeros
