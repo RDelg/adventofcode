@@ -37,7 +37,6 @@ if __name__ == "__main__":
 
     # Part 1
     linear_method = lambda h, i, j: abs(i - j) * h[j]
-
     assert (find_least_fuel_usage(position_demo, linear_method)) == (2, 37)
     print("Part 1:")
     print(find_least_fuel_usage(position, linear_method))
