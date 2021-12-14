@@ -70,12 +70,14 @@ def get_known_coded_segment_using_unique_len(
 ) -> Tuple[Dict[int, Set[str]], Dict[int, List[Set[str]]]]:
     grouped = group_by_len(segments)
     uniq = {lenght: v for lenght, v in grouped.items() if len(v) == 1}
-    non_uniq = {lenght: v for lenght, v in grouped.items() if lenght not in uniq}
+    non_uniq = {
+        lenght: v for lenght, v in grouped.items() if lenght not in uniq
+    }
     known = {}
     unknown = defaultdict(lambda: [])
     for word in row.p1:
-        if (x := len(word)) in uniq and x not in known:
-            known[uniq[x][0][0]] = set(word)
+        if (x := len(word)) in uniq and uniq[x][0].n not in known:
+            known[uniq[x][0].n] = set(word)
         elif x in non_uniq:
             unknown[x].append(set(word))
     return known, unknown
@@ -94,9 +96,11 @@ def generate_translation(
     # #                 0
     # #             ]
     # print(translator)
-    guesses = {}
+    guesses = defaultdict(lambda: set())
     # Populate it with the known segments
-    for key, encoded in sorted(known_segments.items(), key=lambda x: len(x[1])):
+    for key, encoded in sorted(
+        known_segments.items(), key=lambda x: len(x[1])
+    ):
         original = segments[key]
         for code in encoded:
             if code not in guesses.keys():
@@ -109,13 +113,15 @@ def generate_translation(
             if len(new_guess) and new_guess.issubset(guesses[n1]):
                 # print("n1", n1, new_guess, len(new_guess))
                 guesses[n1] = new_guess
-    # print(guesses)
+    # print("ZXCZXC", guesses)
     # print(unknown_segments)
 
     translator = {
-        code: list(guess)[0] for code, guess in guesses.items() if len(guess) == 1
+        code: list(guess)[0]
+        for code, guess in guesses.items()
+        if len(guess) == 1
     }
-    # print(translator)
+    # print("ERT", translator)
     # print(unknown_segments)
     # print(set(x) for x in NUMBER_SEGMENTS])
     grouped = group_by_len(segments)
@@ -138,13 +144,23 @@ def generate_translation(
                         x = encoded_segment.difference(segment).difference(
                             translator.keys()
                         )
+                        y = guess.set.difference(segments[number]).difference(
+                            translator.values()
+                        )
                         # print(guess.n, number)
-                        if len(x) == 1 and len(x) == len(
-                            y := guess.set.difference(segments[number]).difference(
-                                translator.values()
-                            )
-                        ):
-                            translator[x.pop()] = y.pop()
+                        # if len(x) == 1 and len(x) == len(
+                        #     y := guess.set.difference(
+                        #         segments[number]
+                        #     ).difference(translator.values())
+                        # ):
+                        # if len(x) == 1:
+                        for a in x:
+                            # print(a, y, print(guesses[a]))
+                            for b in y:
+                                guesses[a].add(b)
+                        # print(guess.n, number, x, y, translator.values())
+
+                        # translator[x.pop()] = y.pop()
                         # print(
                         #     "ASD",
                         #     guess,
@@ -184,6 +200,48 @@ def generate_translation(
                         #             translator[x.pop()] = y.pop()
 
     iterate()
+
+    all_segments = [y for x in unknown_segments.values() for y in x] + [
+        x for x in known_segments.values()
+    ]
+
+    # for a in guesses["a"]:
+    #     for b in guesses["b"]:
+    #         for c in guesses["c"]:
+    #             for d in guesses["d"]:
+    #                 for e in guesses["e"]:
+    #                     for f in guesses["f"]:
+    #                         for g in guesses["g"]:
+    # for lenght, encoded_segments in unknown_segments.items():
+    #     for encoded in encoded_segments:
+    #         total_unknown += 1
+    #         found = False
+    #         for number, translated in translated_segments.items():
+    #             if encoded == translated:
+    #                 found_translations += 1
+    #                 found = True
+    #         if not found:
+    #             not_found.append(encoded)
+    # # print("A", translated_segments)
+    # # print("B", not_found)
+    # return found_translations == total_unknown
+
+    # g = sorted([(k, v) for k, v in guesses.items()], key=lambda x: x[0])
+
+    # print(g)
+    # translator = {}
+    # discarted = set()
+    # for x in g:
+    #     if len(x[1].difference(discarted)) == 1:
+    #         translator[x[0]] = list(x[1])[0]
+    #         continue
+    #     else:
+    #         translator[x[0]] = x[1].difference(discarted).pop()
+    #     # y = x[1].pop()
+    #     # print(x[0])
+
+    # # print(guessing_translator)
+    # # print("A" * 20)
     # print(translator)
     # print(guesses)
 
@@ -198,23 +256,91 @@ def generate_translation(
         # print(new_translator)
         # print(inv_translator)
 
-        translate = lambda values, lookup: set(
-            [y for x in values if (y := lookup[x]) is not None]
-        )
+        translate_ = lambda values, lookup: set([lookup[x] for x in values])
 
-        # print(unknown_segments)
+        translated_segments = {}
+        for number, segment in segments.items():
+            translated_segments[number] = translate_(segment, inv_translator)
+        found_translations = 0
+        total_unknown = 0
+        not_found = []
         for lenght, encoded_segments in unknown_segments.items():
             for encoded in encoded_segments:
-                decoded = translate(encoded, new_translator)
-                for segment in grouped[lenght]:
-                    if not len(segment.set.difference(decoded)):
-                        break
-                for number, segment2 in segments.items():
-                    a = encoded - translate(segment2, inv_translator)
-                    b = translate(segments[segment.n] - segment2, inv_translator)
-                    if a != b:
-                        return False
-        return True
+                total_unknown += 1
+                found = False
+                for number, translated in translated_segments.items():
+                    if encoded == translated:
+                        found_translations += 1
+                        found = True
+                if not found:
+                    not_found.append(encoded)
+        # print("A", translated_segments)
+        # print("B", not_found)
+        return found_translations == total_unknown
+
+        # for number, segment in translated_segments.items():
+        #     for number2, segment2 in translated_segments.items():
+        #         if number != number2:
+        #             a = segment - segment2
+        #             b = translate_(
+        #                 segments[number] - segments[number2], inv_translator
+        #             )
+        #             print("ASD", a, b)
+        #             if a != b:
+        #                 print("QWE")
+        #                 return False
+
+        # return True
+
+    #     # # print(translated_segments)
+    #     # # for number, translated in translated_segments.items():
+    #     # #     print(number, translated)
+
+    #     # print("*" * 30)
+    #     # print(translated_segments)
+    #     # print("*" * 30)
+    #     # for lenght, encoded_segments in unknown_segments.items():
+    #     #     for encoded in encoded_segments:
+    #     #         found = False
+    #     #         for number, translated in translated_segments.items():
+    #     #             if encoded == translated:
+    #     #                 found = True
+    #     #                 break
+    #     #         if not found:
+    #     #             print(
+    #     #                 number,
+    #     #                 encoded,
+    #     #                 translated,
+    #     #                 # translated_segments,
+    #     #             )
+    #     #             return False
+    #     # return True
+
+    #     # # print(unknown_segments)
+    #     # for lenght, encoded_segments in unknown_segments.items():
+    #     #     for encoded in encoded_segments:
+    #     #         decoded = translate_(encoded, new_translator)
+    #     #         for guess_number, segment in segments.items():
+    #     #             found = False
+    #     #             if segment == decoded:
+    #     #                 found = True
+    #     #                 break
+    #     #         if found:
+    #     #             for number, segment2 in segments.items():
+    #     #                 # a = encoded - translate_(segment2, inv_translator)
+    #     #                 # b = translate_(
+    #     #                 #     segments[guess_number] - segment2, inv_translator
+    #     #                 # )
+    #     #                 a = decoded - segment2
+    #     #                 b = translate_(
+    #     #                     encoded - translate_(segment2, inv_translator),
+    #     #                     new_translator,
+    #     #                 )
+    #     #                 if a != b:
+    #     #                     return False
+    #     #         else:
+    #     #             return False
+    #     # return False
 
     # check_translation("a", "f")
     def iterate_2():
@@ -229,7 +355,8 @@ def generate_translation(
                                 [
                                     y
                                     for x in segment
-                                    if (y := inv_translator.get(x, None)) is not None
+                                    if (y := inv_translator.get(x, None))
+                                    is not None
                                 ]
                             )
                             - set(translator.keys())
@@ -237,8 +364,12 @@ def generate_translation(
 
                         y = guess.set - segment - set(translator.values())
                         if len(x) == 1 and len(y) == 1:
-                            if check_translation((x := x.pop()), (y := y.pop())):
+                            if check_translation(
+                                (x := x.pop()), (y := y.pop())
+                            ):
                                 translator[x] = y
+                            else:
+                                print("FAIL", x, y)
 
     iterate_2()
     return translator
@@ -246,22 +377,35 @@ def generate_translation(
 
 def decode_by_intersection(row: Row) -> int:
     segments = {i: set(x) for i, x in enumerate(NUMBER_SEGMENTS)}
-    known_segments, unknown_segments = get_known_coded_segment_using_unique_len(
-        row=row, segments=segments
-    )
+    (
+        known_segments,
+        unknown_segments,
+    ) = get_known_coded_segment_using_unique_len(row=row, segments=segments)
+
+    all_segments = [y for x in unknown_segments.values() for y in x] + [
+        x for x in known_segments.values()
+    ]
+
+    print(known_segments)
 
     translate = lambda values, lookup: set([lookup[x] for x in values])
 
-    translator = generate_translation(segments, known_segments, unknown_segments)
-    print(len(translator), translator)
+    translator = generate_translation(
+        segments, known_segments, unknown_segments
+    )
+    print("ASDASDASD", len(translator), translator)
 
     def to_number(segment: Set[str]) -> str:
+        len_to_int = {2: 1, 4: 4, 3: 7, 7: 8}
+        if (x := len_to_int.get(len(segment), None)) is not None:
+            return str(x)
         for number, segment2 in segments.items():
-            if segment == segment2:
+            if translate(segment, translator) == segment2:
                 return str(number)
         return None
 
-    return int("".join([to_number(translate(word, translator)) for word in row.p2]))
+    # print([to_number(translate(word, translator)) for word in row.p2])
+    return int("".join([to_number(word) for word in row.p2]))
 
 
 if __name__ == "__main__":
@@ -280,8 +424,8 @@ if __name__ == "__main__":
     for row in input_demo_0:
         assert decode_by_intersection(row) == 5353
 
-    s = 0
-    for row in input_demo:
-        print(row)
-        s += decode_by_intersection(row)
-    print(s)
+    # s = 0
+    # for row in input_demo[1:]:
+    #     s += (x := decode_by_intersection(row))
+    #     print(row, x)
+    # print(s)
