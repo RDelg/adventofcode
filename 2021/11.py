@@ -37,7 +37,6 @@ class Grid:
         return neighbors
 
     def maybe_flash_neighbors(self, x: int, y: int) -> None:
-        # pass
         for i, j in self._get_neighbors(x, y):
             if not self.flashing_mask[i][j]:
                 self.grid[i][j] += 1
@@ -82,7 +81,7 @@ if __name__ == "__main__":
     for _ in range(10):
         s += g.step()
     assert s == 204
-
+    # Demo 2
     g, s = Grid(RAW), 0
     for _ in range(100):
         s += g.step()
