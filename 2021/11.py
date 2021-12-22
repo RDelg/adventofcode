@@ -20,9 +20,7 @@ class Grid:
         self.grid = self._parse(data)
         self.height = len(self.grid)
         self.width = len(self.grid[0])
-        self.flashing_mask = [
-            [False for _ in range(self.width)] for _ in range(self.height)
-        ]
+        self.reset_mask()
 
     def _parse(self, data: str) -> List[List[int]]:
         return [[int(y) for y in list(x)] for x in data.strip().split("\n")]
