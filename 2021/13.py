@@ -87,10 +87,9 @@ class Paper:
         return str(self)
 
     def fold(self, just_first: bool = False) -> "Paper":
-        for fold in self.folds:
+        folds = self.folds[:1] if just_first else self.folds
+        for fold in folds:
             self.fold_along(fold.direction, fold.value)
-            if just_first:
-                break
         return self
 
     def fold_along(self, direction: Direction, value: int):
