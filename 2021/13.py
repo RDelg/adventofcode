@@ -47,14 +47,13 @@ class Paper:
         points, folds = data.strip().split("\n\n")
         self.points = self.parse_points(points)
         self.folds = self.parse_folds(folds)
-        self.max_point = self.get_max_points()
-        self.size = (self.max_point.x + 1, self.max_point.y + 1)
+        max_point = self.get_max_points()
+        self.size = (max_point.y + 1, max_point.x + 1)
         self.grid = self.create_grid()
 
     def create_grid(self) -> List[List[int]]:
         grid = [
-            [False for _ in range(self.max_point.x + 1)]
-            for _ in range(self.max_point.y + 1)
+            [False for _ in range(self.size[1])] for _ in range(self.size[0])
         ]
         for point in self.points:
             grid[point.y][point.x] = True
@@ -62,7 +61,9 @@ class Paper:
 
     @staticmethod
     def parse_points(points: str) -> List[Point]:
-        return [Point(*map(int, point.split(","))) for point in points.split("\n")]
+        return [
+            Point(*map(int, point.split(","))) for point in points.split("\n")
+        ]
 
     @staticmethod
     def parse_folds(folds: str) -> List[Fold]:
@@ -101,8 +102,6 @@ class Paper:
             raise ValueError(f"Unknown direction: {direction}")
 
     def fold_along_x(self, value: int):
-        to_char = lambda x: "#" if x else "."
-        to_str = lambda x: "".join(list(map(to_char, x)))
         new_grid = [[False for _ in range(value)] for _ in range(self.size[0])]
         for y in range(len(self.grid)):
             a = self.grid[y][:value]
@@ -112,12 +111,9 @@ class Paper:
         self.size = (len(self.grid), len(self.grid[0]))
 
     def fold_along_y(self, value: int):
-        to_char = lambda x: "#" if x else "."
-        to_str = lambda x: "\n".join(["".join(map(to_char, row)) for row in x[:value]])
         a = self.grid[:value]
         b = self.grid[value + 1 :][::-1]
         assert len(a) == len(b), f"{len(a)} != {len(b)}"
-        assert len(a[0]) == len(b[0]), f"{len(a[0])} != {len(b[0])}"
         self.grid = [[xx + yy for xx, yy in zip(x, y)] for x, y in zip(a, b)]
         self.size = (len(self.grid), len(self.grid[0]))
 
@@ -138,6 +134,8 @@ if __name__ == "__main__":
     p = Paper(data)
     p.fold(just_first=True)
     print("Part 1:", p.count_points())
+    p = Paper(data)
+    p.fold(just_first=True)
 
     # Part 2
     # Real
