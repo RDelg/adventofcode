@@ -40,7 +40,7 @@ class Graph:
         self.build_graph(grid)
 
     @staticmethod
-    def expand_grid(grid: List[List[int]], n: int = 5) -> List[List[int]]:
+    def expand_grid(grid: List[List[int]], n: int) -> List[List[int]]:
         size = (len(grid), len(grid[0]))
         new_grid = np.zeros((size[1] * n, size[0] * n), dtype=np.int8)
         for j in range(size[1] * n):
