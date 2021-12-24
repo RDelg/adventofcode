@@ -1,5 +1,7 @@
-import sys
-from typing import List
+from typing import List, Optional
+
+import numpy as np
+from numba import jit
 
 RAW_DEMO = """\
 1163751742
@@ -15,15 +17,48 @@ RAW_DEMO = """\
 """
 
 
+@jit(nopython=True)
+def min_distance_idx(dist: List[int], ignore: List[bool]) -> int:
+    min = np.iinfo(np.int32).max
+    for v in range(len(dist)):
+        if dist[v] < min and not ignore[v]:
+            min = dist[v]
+            min_index = v
+    return min_index
+
+
 class Graph:
-    def __init__(self, data: str) -> None:
-        parsed = [[int(y) for y in x] for x in data.strip().split("\n")]
-        self.size = (len(parsed), len(parsed[0]))
+    def __init__(self, data: str, expand_n: Optional[int] = 1) -> None:
+        assert expand_n > 0, "expand_n must be greater than 0"
+        grid = np.array(
+            [[int(y) for y in x] for x in data.strip().split("\n")], dtype=np.int8
+        )
+        if expand_n > 1:
+            grid = self.expand_grid(grid=grid, n=expand_n)
+        self.size = (len(grid), len(grid[0]))
         self.V = self.size[0] * self.size[1]
-        self.build_graph(parsed)
+        self.build_graph(grid)
+
+    @staticmethod
+    def expand_grid(grid: List[List[int]], n: int = 5) -> List[List[int]]:
+        size = (len(grid), len(grid[0]))
+        new_grid = np.zeros((size[1] * n, size[0] * n), dtype=np.int8)
+        for j in range(size[1] * n):
+            for i in range(size[0] * n):
+                new_grid[j][i] = (
+                    x % 10
+                    if (
+                        x := (
+                            grid[j % size[1]][i % size[0]] + j // size[1] + i // size[0]
+                        )
+                    )
+                    < 10
+                    else x % 10 + 1
+                )
+        return new_grid
 
     def build_graph(self, data: List[List[int]]) -> None:
-        self.graph = [[0 for _ in range(self.V)] for _ in range(self.V)]
+        self.graph = np.zeros((self.V, self.V), dtype=np.int8)
 
         get_neighbors = lambda i, j: [
             (x, y)
@@ -44,30 +79,26 @@ class Graph:
                         jj
                     ]
 
-    def minDistance(self, dist: List[int], sptSet: List[bool]) -> int:
-        min = sys.maxsize
-        for v in range(self.V):
-            if dist[v] < min and sptSet[v] == False:
-                min = dist[v]
-                min_index = v
-        return min_index
+    @staticmethod
+    @jit(nopython=True)
+    def dijkstra(graph: np.ndarray, src: int) -> np.ndarray:
+        dist = np.ones((graph.shape[0],), dtype=np.int32) * np.iinfo(np.int32).max
+        dist[src] = 0
+        ignore = np.zeros(graph.shape[0], dtype=np.int8)
+        for _ in range(graph.shape[0]):
+            u = min_distance_idx(dist, ignore)
+            ignore[u] = True
+            for v in range(graph.shape[0]):
+                if (
+                    graph[u][v] > 0
+                    and not ignore[v]
+                    and dist[v] > dist[u] + graph[u][v]
+                ):
+                    dist[v] = dist[u] + graph[u][v]
+        return dist
 
     def dijk(self, source: int) -> List[int]:
-        dist = [sys.maxsize] * self.V
-        dist[source] = 0
-        sptSet = [False] * self.V
-
-        for cout in range(self.V):
-            u = self.minDistance(dist, sptSet)
-            sptSet[u] = True
-            for v in range(self.V):
-                if (
-                    self.graph[u][v] > 0
-                    and sptSet[v] == False
-                    and dist[v] > dist[u] + self.graph[u][v]
-                ):
-                    dist[v] = dist[u] + self.graph[u][v]
-
+        dist = self.dijkstra(self.graph, source)
         return [dist[node] for node in range(self.V)]
 
 
@@ -81,3 +112,10 @@ if __name__ == "__main__":
     # Real
     f = Graph(data)
     print("Part 1", f.dijk(0)[-1])
+    # Part 2
+    # Demo
+    f = Graph(RAW_DEMO, expand_n=5)
+    assert f.dijk(0)[-1] == 315
+    # Real
+    f = Graph(data, expand_n=5)
+    print("Part 2", f.dijk(0)[-1])
