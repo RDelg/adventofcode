@@ -2,6 +2,7 @@ from typing import List, Optional
 
 import numpy as np
 from numba import jit
+from scipy.sparse import lil_matrix
 
 RAW_DEMO = """\
 1163751742
@@ -58,8 +59,7 @@ class Graph:
         return new_grid
 
     def build_graph(self, data: List[List[int]]) -> None:
-        self.graph = np.zeros((self.V, self.V), dtype=np.int8)
-
+        graph = lil_matrix((self.V, self.V), dtype=np.int8)
         get_neighbors = lambda i, j: [
             (x, y)
             for x, y in [
@@ -75,30 +75,33 @@ class Graph:
             for j in range(self.size[1]):
                 neighbors = get_neighbors(i, j)
                 for ii, jj in neighbors:
-                    self.graph[i * self.size[0] + j][ii * self.size[0] + jj] = data[ii][
-                        jj
-                    ]
+                    graph[i * self.size[0] + j, ii * self.size[0] + jj] = data[ii][jj]
+        self.graph = graph.tocsr()
 
     @staticmethod
     @jit(nopython=True)
-    def dijkstra(graph: np.ndarray, src: int) -> np.ndarray:
-        dist = np.ones((graph.shape[0],), dtype=np.int32) * np.iinfo(np.int32).max
+    def dijkstra(
+        graph: np.ndarray, iis: np.ndarray, jjs: np.ndarray, n: int, src: int
+    ) -> np.ndarray:
+        dist = np.ones((n,), dtype=np.int32) * np.iinfo(np.int32).max
         dist[src] = 0
-        ignore = np.zeros(graph.shape[0], dtype=np.int8)
-        for _ in range(graph.shape[0]):
+        ignore = np.zeros(n, dtype=np.int8)
+        for _ in range(n):
             u = min_distance_idx(dist, ignore)
             ignore[u] = True
-            for v in range(graph.shape[0]):
-                if (
-                    graph[u][v] > 0
-                    and not ignore[v]
-                    and dist[v] > dist[u] + graph[u][v]
-                ):
-                    dist[v] = dist[u] + graph[u][v]
+            for i in range(iis[u], iis[u + 1]):
+                if not ignore[jjs[i]] and dist[jjs[i]] > dist[u] + graph[i]:
+                    dist[jjs[i]] = dist[u] + graph[i]
         return dist
 
     def dijk(self, source: int) -> List[int]:
-        dist = self.dijkstra(self.graph, source)
+        dist = self.dijkstra(
+            self.graph.data,
+            self.graph.indptr,
+            self.graph.indices,
+            self.size[0] ** 2,
+            source,
+        )
         return [dist[node] for node in range(self.V)]
 
 
@@ -108,7 +111,7 @@ if __name__ == "__main__":
     # Part 1
     # Demo
     f = Graph(RAW_DEMO)
-    assert f.dijk(0)[-1] == 40
+    assert (x := f.dijk(0)[-1]) == 40, f"Part 1 Demo Failed: {x}"
     # Real
     f = Graph(data)
     print("Part 1", f.dijk(0)[-1])
