@@ -59,7 +59,7 @@ class Packet:
         length_type_id = int(data[0])
         if length_type_id == 0:
             bits_len = int(data[1:16], 2)
-            return Packet.from_bin("11010001010")
+            return Packet.from_bin(data[16 : 16 + bits_len])
         elif length_type_id == 1:
             pass
         else:
