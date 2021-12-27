@@ -112,8 +112,6 @@ class Packet:
     @staticmethod
     def hex_to_binary(data: str) -> str:
         decoded = "".join([bin(int(x, 16))[2:].zfill(4) for x in data])
-        if len(decoded) % 4 != 0:
-            decoded = decoded.zfill(4 * ((len(decoded) // 4) + 1))
         return decoded
 
     @staticmethod
