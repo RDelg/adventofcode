@@ -1,3 +1,6 @@
+import operator
+import functools
+
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, Tuple, Union
@@ -10,11 +13,25 @@ RAW_DEMO_4 = "8A004A801A8002F478"
 RAW_DEMO_5 = "620080001611562C8802118E34"
 RAW_DEMO_6 = "C0015000016115A2E0802F182340"
 RAW_DEMO_7 = "A0016C880162017C3686B18A3D4780"
+RAW_DEMO_8 = "C200B40A82"
+RAW_DEMO_9 = "04005AC33890"
+RAW_DEMO_10 = "880086C3E88112"
+RAW_DEMO_11 = "CE00C43D881120"
+RAW_DEMO_12 = "D8005AC2A8F0"
+RAW_DEMO_13 = "F600BC2D8F"
+RAW_DEMO_14 = "9C005AC2F8F0"
+RAW_DEMO_15 = "9C0141080250320F1802104A08"
 
 
-class PacketType(str, Enum):
-    literal = "literal"
-    operator = "operator"
+class PacketType(int, Enum):
+    sum = 0
+    product = 1
+    minimum = 2
+    maximum = 3
+    literal = 4
+    greater_than = 5
+    less_than = 6
+    equal_to = 7
 
 
 @dataclass
@@ -34,7 +51,7 @@ class Packet:
             type_id,
             (x := cls.get_type(type_id)),
             (y := cls.get_value(x, decoded[6:]))[0],
-            (6 + y[1]) if x == PacketType.literal else (7 + y[1]),
+            (6 + y[1]),
         )
 
     @classmethod
@@ -45,15 +62,12 @@ class Packet:
             type_id,
             (x := cls.get_type(type_id)),
             (y := cls.get_value(x, data[6:]))[0],
-            (6 + y[1]) if x == PacketType.literal else (7 + y[1]),
+            (6 + y[1]),
         )
 
     @staticmethod
     def get_type(type_id: int) -> PacketType:
-        if type_id == 4:
-            return PacketType.literal
-        else:
-            return PacketType.operator
+        return PacketType(type_id)
 
     @staticmethod
     def get_value(
@@ -73,7 +87,7 @@ class Packet:
             packets.append(Packet.from_bin(data[16 : 16 + bits_len]))
             while (x := sum([x._bits for x in packets])) < bits_len:
                 packets.append(Packet.from_bin(data[16 + x : 16 + bits_len]))
-            return packets, bits_len + 15
+            return packets, bits_len + 16
         elif length_type_id == 1:
             sub_packets = int(data[1:12], 2)
             packets.append(Packet.from_bin(data[12:]))
@@ -81,7 +95,7 @@ class Packet:
                 skip_bits = sum([x._bits for x in packets])
                 packets.append(Packet.from_bin(data[12 + skip_bits :]))
             bits = sum([x._bits for x in packets])
-            return packets, 11 + bits
+            return packets, 12 + bits
         else:
             raise ValueError(f"Unknown operator length type: {length_type_id}")
 
@@ -98,7 +112,7 @@ class Packet:
 
     @staticmethod
     def hex_to_binary(data: str) -> str:
-        decoded = bin(int(data, 16))[2:]
+        decoded = "".join([bin(int(x, 16))[2:].zfill(4) for x in data])
         if len(decoded) % 4 != 0:
             decoded = decoded.zfill(4 * ((len(decoded) // 4) + 1))
         return decoded
@@ -115,6 +129,55 @@ class Packet:
             for p in self.value:
                 v += p.sum_versions()
         return v
+
+    def operator(self) -> str:
+        if self.type == PacketType.sum:
+            return "sum"
+        elif self.type == PacketType.product:
+            return "prod"
+        elif self.type == PacketType.minimum:
+            return "min"
+        elif self.type == PacketType.maximum:
+            return "max"
+        elif self.type == PacketType.less_than:
+            return "less"
+        elif self.type == PacketType.greater_than:
+            return "greater"
+        elif self.type == PacketType.equal_to:
+            return "equal"
+        else:
+            raise ValueError(f"Unknown operator: {self.type}")
+
+    def to_math_expresion(self) -> str:
+        if isinstance(self.value, list):
+            return (
+                "("
+                + self.operator()
+                + "("
+                + "["
+                + ",".join([x.to_math_expresion() for x in self.value])
+                + "]"
+                + ")"
+                + ")"
+            )
+        else:
+            return str(self.value)
+
+
+def prod(*args) -> float:
+    return functools.reduce(operator.mul, *args, 1)
+
+
+def less(*args) -> bool:
+    return functools.reduce(operator.lt, *args)
+
+
+def greater(*args) -> bool:
+    return functools.reduce(operator.gt, *args)
+
+
+def equal(*args) -> bool:
+    return functools.reduce(operator.eq, *args)
 
 
 if __name__ == "__main__":
@@ -134,7 +197,7 @@ if __name__ == "__main__":
     assert c == Packet(
         version=1,
         type_id=6,
-        type=PacketType.operator,
+        type=PacketType(6),
         value=[
             Packet(
                 version=6,
@@ -159,7 +222,7 @@ if __name__ == "__main__":
     assert c == Packet(
         version=7,
         type_id=3,
-        type=PacketType.operator,
+        type=PacketType(3),
         value=[
             Packet(
                 version=2,
@@ -203,3 +266,29 @@ if __name__ == "__main__":
     # Real
     c = Packet.from_hex(data)
     print("Part 1:", c.sum_versions())
+
+    # Part 2
+    # Demo 8
+    c = Packet.from_hex(RAW_DEMO_8)
+    assert eval(c.to_math_expresion()) == 3
+    # Demo 9
+    c = Packet.from_hex(RAW_DEMO_9)
+    assert eval(c.to_math_expresion()) == 54
+    # Demo 10
+    c = Packet.from_hex(RAW_DEMO_10)
+    assert eval(c.to_math_expresion()) == 7
+    # Demo 11
+    c = Packet.from_hex(RAW_DEMO_11)
+    assert eval(c.to_math_expresion()) == 9
+    # Demo 12
+    c = Packet.from_hex(RAW_DEMO_12)
+    assert eval(c.to_math_expresion()) == 1
+    # Demo 13
+    c = Packet.from_hex(RAW_DEMO_13)
+    assert eval(c.to_math_expresion()) == 0
+    # Demo 14
+    c = Packet.from_hex(RAW_DEMO_14)
+    assert eval(c.to_math_expresion()) == 0
+    # Real
+    c = Packet.from_hex(data)
+    print("Part 1:", eval(c.to_math_expresion()))
