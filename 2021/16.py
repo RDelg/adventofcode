@@ -151,13 +151,11 @@ class Packet:
     def to_math_expresion(self) -> str:
         if isinstance(self.value, list):
             return (
-                "("
-                + self.operator()
+                self.operator()
                 + "("
                 + "["
                 + ",".join([x.to_math_expresion() for x in self.value])
                 + "]"
-                + ")"
                 + ")"
             )
         else:
