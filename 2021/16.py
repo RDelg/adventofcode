@@ -289,4 +289,4 @@ if __name__ == "__main__":
     assert eval(c.to_math_expresion()) == 0
     # Real
     c = Packet.from_hex(data)
-    print("Part 1:", eval(c.to_math_expresion()))
+    print("Part 2:", eval(c.to_math_expresion()))
