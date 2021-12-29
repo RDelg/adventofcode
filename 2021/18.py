@@ -1,3 +1,4 @@
+import ast
 import re
 from typing import List, Tuple
 
@@ -9,7 +10,7 @@ RAW_DEMO_4 = "[[3,[2,[1,[7,3]]]],[6,[5,[4,[3,2]]]]]"
 # Test split
 RAW_DEMO_5 = "[[[[0,7],4],[15,[0,13]]],[1,1]]"
 # Test sum_numbers
-RAW_DEMO = """\
+RAW_DEMO_6 = """\
 [[[0,[4,5]],[0,0]],[[[4,5],[2,6]],[9,5]]]
 [7,[[[3,7],[4,3]],[[6,3],[8,8]]]]
 [[2,[[0,8],[3,4]]],[[[6,7],1],[7,[1,6]]]]
@@ -23,34 +24,46 @@ RAW_DEMO = """\
 """
 
 
-EXPLODE_REGEXP = re.compile(r"\[{3}(\[\d,\d\])|(\[\d,\d\])\]{3}")
+PAIR_REGEXP = re.compile(r"(\[\d+,\d+\])")
+BRACKET_REGEXP = re.compile(r"(\[)|(\])")
 NUMBER_REGEXP = re.compile(r"(\d+)")
 
 
 def explode(number: str) -> str:
-    explodes: List[Tuple[Tuple[int, int], Tuple[int, int]]] = sorted(
+    pairs: List[Tuple[Tuple[int, int], Tuple[int, int]]] = sorted(
         [
-            (x, tuple(map(int, m.group(idx)[1:-1].split(","))))
-            for idx in range(1, 3)
-            for m in EXPLODE_REGEXP.finditer(number)
-            if (x := m.span(idx)) != (-1, -1)
+            (x, tuple(map(int, m.group(1)[1:-1].split(","))))
+            for m in PAIR_REGEXP.finditer(number)
+            if (x := m.span(1)) != (-1, -1)
         ],
         key=lambda x: x[0][0],
     )
 
-    numbers: List[Tuple[Tuple[int, int], int]] = sorted(
-        [
-            (m.span(idx), int(m.group(idx)))
-            for idx in range(1, 2)
-            for m in NUMBER_REGEXP.finditer(number)
-        ],
-        key=lambda x: x[0][0],
-    )
+    brackets: List[Tuple[int, str]] = [
+        (x[0], m.group(idx))
+        for idx in range(1, 3)
+        for m in BRACKET_REGEXP.finditer(number)
+        if (x := m.span(idx)) != (-1, -1)
+    ]
+    to_int = lambda x: 1 if x == "[" else -1
+    pairs_depth = [
+        sum([to_int(bracket) for pos, bracket in brackets if pos < span[0]])
+        for span, _ in pairs
+    ]
+    explode_idx = [i for i, depth in enumerate(pairs_depth) if depth >= 4]
 
-    if not len(explodes):
+    if not len(explode_idx):
         new_number = number
     else:
-        span, values = explodes[0]
+        span, values = pairs[explode_idx[0]]
+        numbers: List[Tuple[Tuple[int, int], int]] = sorted(
+            [
+                (m.span(idx), int(m.group(idx)))
+                for idx in range(1, 2)
+                for m in NUMBER_REGEXP.finditer(number)
+            ],
+            key=lambda x: x[0][0],
+        )
         left_numbers = [
             (span2, value) for span2, value in numbers if span2[1] < span[0]
         ]
@@ -64,7 +77,7 @@ def explode(number: str) -> str:
             new_number = (
                 number[: left_number[0][0]]
                 + str(left_number[1] + values[0])
-                + ","
+                + number[left_number[0][1] : span[0]]
             )
         else:
             # TODO: Validate this
@@ -114,24 +127,44 @@ def sum_numbers(a: str, b: str) -> str:
 
 
 def reduce_number(number: str) -> str:
-    print(number)
     while True:
         new_number = explode(number)
-        print("explode", new_number)
         if new_number == number:
             new_number = split(number)
             if new_number == number:
                 break
             else:
                 number = new_number
-            break
         else:
             number = new_number
-
     return number
 
 
+def sum_number_list(data: str) -> str:
+    data = data.strip().splitlines()
+    result = data[0]
+    for number in data[1:]:
+        result = reduce_number(sum_numbers(result, number))
+    return result
+
+
+def get_sum(data: list, mult: int = 1) -> int:
+    LEFT_SIDE = 3
+    RIGHT_SIDE = 2
+    if isinstance(data[0], list) and isinstance(data[1], list):
+        return get_sum(data[0], LEFT_SIDE * mult) + get_sum(data[1], RIGHT_SIDE * mult)
+    elif isinstance(data[0], list):
+        return get_sum(data[0], LEFT_SIDE * mult) + data[1] * (RIGHT_SIDE * mult)
+    elif isinstance(data[1], list):
+        return (RIGHT_SIDE * mult) + get_sum(data[0], RIGHT_SIDE * mult) + data[1]
+    else:
+        return data[0] * (LEFT_SIDE * mult) + data[1] * (RIGHT_SIDE * mult)
+
+
 if __name__ == "__main__":
+    # Data
+    with open("data/18.txt", "r") as f:
+        data = f.read()
     # Part 1
     # Explode
     assert explode(RAW_DEMO_1) == "[[[[0,9],2],3],4]"
@@ -142,6 +175,14 @@ if __name__ == "__main__":
     # Split
     assert split(RAW_DEMO_5) == "[[[[0,7],4],[[7,8],[0,13]]],[1,1]]"
     assert split(split(RAW_DEMO_5)) == "[[[[0,7],4],[[7,8],[0,[6,7]]]],[1,1]]"
-    # Full test
-
-    print(reduce_number(sum_numbers("[[[[4,3],4],4],[7,[[8,4],9]]]", "[1,1]")))
+    # Reduce test
+    assert (
+        reduce_number(sum_numbers("[[[[4,3],4],4],[7,[[8,4],9]]]", "[1,1]"))
+        == "[[[[0,7],4],[[7,8],[6,0]]],[8,1]]"
+    )
+    # Sum test
+    assert (
+        sum_number_list(RAW_DEMO_6)
+    ) == "[[[[8,7],[7,7]],[[8,6],[7,7]]],[[[0,7],[6,6]],[8,7]]]"
+    # Solution 1
+    print("Part 1:", get_sum(ast.literal_eval(sum_number_list(data))))
