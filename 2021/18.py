@@ -108,7 +108,7 @@ def explode(number: str) -> str:
     return new_number
 
 
-def split(number: str) -> List[str]:
+def split(number: str) -> str:
     numbers: List[Tuple[Tuple[int, int], int]] = sorted(
         [
             (m.span(idx), x)
