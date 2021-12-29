@@ -22,6 +22,18 @@ RAW_DEMO_6 = """\
 [[[5,[7,4]],7],1]
 [[[[4,2],2],6],[8,7]]
 """
+RAW_DEMO_7 = """\
+[[[0,[5,8]],[[1,7],[9,6]]],[[4,[1,2]],[[1,4],2]]]
+[[[5,[2,8]],4],[5,[[9,9],0]]]
+[6,[[[6,2],[5,6]],[[7,6],[4,7]]]]
+[[[6,[0,7]],[0,9]],[4,[9,[9,0]]]]
+[[[7,[6,4]],[3,[1,3]]],[[[5,5],1],9]]
+[[6,[[7,3],[3,2]]],[[[3,8],[5,7]],4]]
+[[[[5,4],[7,7]],8],[[8,3],8]]
+[[9,3],[[9,9],[6,[4,9]]]]
+[[2,[[7,7],7]],[[5,8],[[9,3],[0,2]]]]
+[[[[5,2],5],[8,[3,7]]],[[5,[7,5]],[4,4]]]
+"""
 
 
 PAIR_REGEXP = re.compile(r"(\[\d+,\d+\])")
@@ -80,7 +92,6 @@ def explode(number: str) -> str:
                 + number[left_number[0][1] : span[0]]
             )
         else:
-            # TODO: Validate this
             new_number = number[: span[0]]
 
         new_number += "0"
@@ -92,7 +103,6 @@ def explode(number: str) -> str:
                 + number[right_number[0][1] :]
             )
         else:
-            # TODO: Validate this
             new_number += number[span[1] :]
 
     return new_number
@@ -151,14 +161,30 @@ def sum_number_list(data: str) -> str:
 def get_sum(data: list, mult: int = 1) -> int:
     LEFT_SIDE = 3
     RIGHT_SIDE = 2
+    if isinstance(data, int):
+        return data
     if isinstance(data[0], list) and isinstance(data[1], list):
         return get_sum(data[0], LEFT_SIDE * mult) + get_sum(data[1], RIGHT_SIDE * mult)
     elif isinstance(data[0], list):
         return get_sum(data[0], LEFT_SIDE * mult) + data[1] * (RIGHT_SIDE * mult)
     elif isinstance(data[1], list):
-        return (RIGHT_SIDE * mult) + get_sum(data[0], RIGHT_SIDE * mult) + data[1]
+        return data[0] * (LEFT_SIDE * mult) + get_sum(data[1], RIGHT_SIDE * mult)
     else:
         return data[0] * (LEFT_SIDE * mult) + data[1] * (RIGHT_SIDE * mult)
+
+
+def sum_pairs(data: str) -> List[Tuple[str, str]]:
+    data = data.strip().splitlines()
+    result = [(a, b) for a in data for b in data if a != b]
+    return result
+
+
+def solution_2(data: str) -> int:
+    pairs = sum_pairs(data)
+    values = [
+        get_sum(ast.literal_eval(reduce_number(sum_numbers(*pair)))) for pair in pairs
+    ]
+    return max(values)
 
 
 if __name__ == "__main__":
@@ -186,3 +212,8 @@ if __name__ == "__main__":
     ) == "[[[[8,7],[7,7]],[[8,6],[7,7]]],[[[0,7],[6,6]],[8,7]]]"
     # Solution 1
     print("Part 1:", get_sum(ast.literal_eval(sum_number_list(data))))
+
+    # Part 2
+    # Demo
+    assert solution_2(RAW_DEMO_7) == 3993
+    print("Part 2:", solution_2(data))
