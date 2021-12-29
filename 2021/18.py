@@ -161,28 +161,27 @@ def sum_number_list(data: str) -> str:
 def get_sum(data: list, mult: int = 1) -> int:
     LEFT_SIDE = 3
     RIGHT_SIDE = 2
-    if isinstance(data, int):
-        return data
     if isinstance(data[0], list) and isinstance(data[1], list):
-        return get_sum(data[0], LEFT_SIDE * mult) + get_sum(data[1], RIGHT_SIDE * mult)
+        return get_sum(data[0], LEFT_SIDE * mult) + get_sum(
+            data[1], RIGHT_SIDE * mult
+        )
     elif isinstance(data[0], list):
-        return get_sum(data[0], LEFT_SIDE * mult) + data[1] * (RIGHT_SIDE * mult)
+        return get_sum(data[0], LEFT_SIDE * mult) + data[1] * (
+            RIGHT_SIDE * mult
+        )
     elif isinstance(data[1], list):
-        return data[0] * (LEFT_SIDE * mult) + get_sum(data[1], RIGHT_SIDE * mult)
+        return data[0] * (LEFT_SIDE * mult) + get_sum(
+            data[1], RIGHT_SIDE * mult
+        )
     else:
         return data[0] * (LEFT_SIDE * mult) + data[1] * (RIGHT_SIDE * mult)
 
 
-def sum_pairs(data: str) -> List[Tuple[str, str]]:
-    data = data.strip().splitlines()
-    result = [(a, b) for a in data for b in data if a != b]
-    return result
-
-
 def solution_2(data: str) -> int:
-    pairs = sum_pairs(data)
+    data = data.strip().splitlines()
     values = [
-        get_sum(ast.literal_eval(reduce_number(sum_numbers(*pair)))) for pair in pairs
+        get_sum(ast.literal_eval(reduce_number(sum_numbers(*pair))))
+        for pair in [(a, b) for a in data for b in data if a != b]
     ]
     return max(values)
 
