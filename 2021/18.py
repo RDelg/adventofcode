@@ -159,22 +159,16 @@ def sum_number_list(data: str) -> str:
 
 
 def get_sum(data: list, mult: int = 1) -> int:
-    LEFT_SIDE = 3
-    RIGHT_SIDE = 2
+    LEFT = 3
+    RIGHT = 2
     if isinstance(data[0], list) and isinstance(data[1], list):
-        return get_sum(data[0], LEFT_SIDE * mult) + get_sum(
-            data[1], RIGHT_SIDE * mult
-        )
+        return get_sum(data[0], LEFT * mult) + get_sum(data[1], RIGHT * mult)
     elif isinstance(data[0], list):
-        return get_sum(data[0], LEFT_SIDE * mult) + data[1] * (
-            RIGHT_SIDE * mult
-        )
+        return get_sum(data[0], LEFT * mult) + data[1] * (RIGHT * mult)
     elif isinstance(data[1], list):
-        return data[0] * (LEFT_SIDE * mult) + get_sum(
-            data[1], RIGHT_SIDE * mult
-        )
+        return data[0] * (LEFT * mult) + get_sum(data[1], RIGHT * mult)
     else:
-        return data[0] * (LEFT_SIDE * mult) + data[1] * (RIGHT_SIDE * mult)
+        return data[0] * (LEFT * mult) + data[1] * (RIGHT * mult)
 
 
 def solution_2(data: str) -> int:
