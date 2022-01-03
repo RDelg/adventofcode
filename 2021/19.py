@@ -206,10 +206,12 @@ class Scanner:
 
     # https://stackoverflow.com/a/58471362
     def rotations(self) -> Iterator["Scanner"]:
-        for roll_index in range(6):
-            yield self.rotate_x_90()
-            for turn_index in range(3):
-                yield self.rotate_y_90() if roll_index % 2 == 0 else self.rotate_z_90()
+        for cycle in range(2):
+            for step in range(3):  # Yield RTTT 3 times
+                yield self.rotate_x_90()
+                for i in range(3):  #    Yield TTT
+                    yield self.rotate_z_90()
+            self.rotate_x_90().rotate_z_90().rotate_x_90()  # Do RTR
 
     def move(self, x: int, y: int, z: int) -> "Scanner":
         self.points = [Point3D(p.x - x, p.y - y, p.z - z) for p in self.points]
@@ -261,18 +263,21 @@ class Map:
 if __name__ == "__main__":
     RAW_0 = """
 --- scanner 0 ---
--485,-357,347
+1,2,3
 """
-    # scanner = Scanner.from_str(RAW_0).move(+68, -1246, -43)
+    scanner = Scanner.from_str(RAW_0)  # .move(+68, -1246, -43)
+    print(scanner)
     # # print(scanner)
     # # print("ASDDS")
+
+    a = [[tuple(p) for p in rot.points][0] for rot in scanner.rotations()]
+    print(len(a), len(set(a)))
     # for rot in scanner.rotations():
-    #     # print(rot)
-    #     a = [int(x) for x in str(rot).split("\n")[-1].split(",")]
-    #     # print(a)
-    #     if a[0] == 553 and a[1] == 889:
-    #         print(a)
-    #         asd = Scanner.from_copy(rot)
+    #     a = [tuple(p) for p in rot.points]
+    #     print(a)
+    # if a[0] == 553 and a[1] == 889:
+    #     print(a)
+    #     asd = Scanner.from_copy(rot)
 
     # print(asd.matches(scanner))
 
