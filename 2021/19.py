@@ -1,6 +1,8 @@
-from collections import defaultdict
-from typing import Iterator, List, NamedTuple
+from dataclasses import dataclass
+from typing import Iterator, List
 
+
+from tqdm import trange
 
 RAW = """\
 --- scanner 0 ---
@@ -152,7 +154,8 @@ RAW_2 = """\
 """
 
 
-class Point3D(NamedTuple):
+@dataclass
+class Point3D:
     x: int
     y: int
     z: int
@@ -176,10 +179,11 @@ class Scanner:
         self.reference = None
         self.pos = None
 
-    def align(self, reference: "Scanner", pos: Point3D) -> None:
+    def align(self, reference: "Scanner", pos: Point3D) -> "Scanner":
         self.reference = reference
         self.pos = pos
         self.aligned = True
+        return self
 
     def __iter__(self) -> Iterator[Point3D]:
         return iter(self.points)
@@ -193,15 +197,18 @@ class Scanner:
         )
 
     def rotate_x_90(self) -> "Scanner":
-        self.points = [Point3D(p.x, -p.z, p.y) for p in self.points]
+        for p in self.points:
+            p.y, p.z = -p.z, p.y
         return self
 
     def rotate_y_90(self) -> "Scanner":
-        self.points = [Point3D(p.z, p.y, -p.x) for p in self.points]
+        for p in self.points:
+            p.x, p.z = p.z, -p.x
         return self
 
     def rotate_z_90(self) -> "Scanner":
-        self.points = [Point3D(-p.y, p.x, p.z) for p in self.points]
+        for p in self.points:
+            p.x, p.y = -p.y, p.x
         return self
 
     # https://stackoverflow.com/a/16467849
@@ -214,7 +221,10 @@ class Scanner:
             self.rotate_x_90().rotate_z_90().rotate_x_90()  # Do RTR
 
     def move(self, x: int, y: int, z: int) -> "Scanner":
-        self.points = [Point3D(p.x - x, p.y - y, p.z - z) for p in self.points]
+        for p in self.points:
+            p.x -= x
+            p.y -= y
+            p.z -= z
         return self
 
     def matches(self, other: "Scanner") -> int:
@@ -228,7 +238,7 @@ def load_scanners(data: str) -> List[Scanner]:
 class Map:
     def __init__(self, scanners: List[Scanner], extra_border: int = 100):
         max_range = self._maximum_range(scanners)
-        self.aligned_scanners = [scanners.pop()]
+        self.aligned_scanners = [scanners.pop(0).align(None, Point3D(0, 0, 0))]
         self.remaining_scanners = scanners
         self.max_range = max_range + extra_border
         self.align_scanners()
@@ -243,11 +253,17 @@ class Map:
         )
 
     def align_scanners(self) -> None:
-        print(set(self.remaining_scanners[0]))
-        print("ASD")
-        m = self.remaining_scanners[1].move(-68, -1246, -43)
+        k = self.aligned_scanners[0]
+        m = self.remaining_scanners[0]
+        # print("ASD\n", m)
+        # print("ZXC", k)
+        print(k)
+        print(m)
+        # b = [tuple(p) for p in k.points][0]
         for rot in m.rotations():
-            print(rot)
+            a = [tuple(p) for p in rot.move(+68, -1246, -43).points][0]
+            print(a)
+        #     print(k.matches(rot.move(+68, -1246, -43)))
 
         # for i in range(-self.max_range, self.max_range + 1):
         #     for j in range(-self.max_range, self.max_range + 1):
@@ -262,41 +278,75 @@ class Map:
 
 if __name__ == "__main__":
     RAW_0 = """
---- scanner 0 ---
-1,2,3
-"""
-    scanner = Scanner.from_str(RAW_0)  # .move(+68, -1246, -43)
+        --- scanner 0 ---
+       -618,-824,-621
+    """
+    scanner = Scanner.from_str(RAW_0).move(+68, -1246, -43)  # .move(+68, -1246, -43)
     print(scanner)
+    for i, rot in enumerate(scanner.rotations()):
+        # if rot.points[0] == (686, 422, 578):
+        if (a := rot.points[0]).x == 686 and a.y == 422 and a.z == 578:
+            print("Found 1", i)
+
+    RAW_0 = """
+        --- scanner 1 ---
+       686, 422, 578
+    """
+    scanner = Scanner.from_str(RAW_0)
+    print(scanner)
+    for rot in scanner.rotations():
+        for i in trange(-2_000, 2_000 + 1, desc="i"):
+            for j in trange(-2_000, 2_000 + 1, desc="j", leave=False):
+                for k in trange(-2_000, 2_000 + 1, desc="k", disable=True):
+                    if (
+                        (a := rot.points[0]).x + i == -618
+                        and a.y + j == -824
+                        and a.z + k == -621
+                    ):
+                        print("Found 2", i, j, k)
+                        break
+
     # # print(scanner)
     # # print("ASDDS")
+    #
+    # a = [[tuple(p) for p in rot.points][0] for rot in scanner.rotations()]
+    # print(len(a), len(set(a)))
+    # # a = [tuple(p) for p in rot.points][0]
+    # b = [tuple(p) for p in rot.move(-68, +1246, +43).points][0]
+    # # print(a == b)
+    # # print(b)
+    # if b == (-618, -824, -621):
+    #     print("ASD")
+    #     print(scanner, rot)
+# if a[0] == 553 and a[1] == 889:
+#     print(a)
+#     asd = Scanner.from_copy(rot)
 
-    a = [[tuple(p) for p in rot.points][0] for rot in scanner.rotations()]
-    print(len(a), len(set(a)))
-    # for rot in scanner.rotations():
-    #     a = [tuple(p) for p in rot.points]
-    #     print(a)
-    # if a[0] == 553 and a[1] == 889:
-    #     print(a)
-    #     asd = Scanner.from_copy(rot)
+# print(asd.matches(scanner))
 
-    # print(asd.matches(scanner))
+# 553,889,-390
+#     RAW_2 = """\
+# --- scanner 0 ---
+# -618,-824,-621
 
-    # 553,889,-390
+# --- scanner 1 ---
+# 686,422,578
+# """
 
-    # scanners = load_scanners(RAW_2)
-    # m = Map(scanners)
+#     scanners = load_scanners(RAW_2)
+#     m = Map(scanners)
 
-    # s = Scanner.from_str(RAW)
-    # rotations = [Scanner.from_copy(rot) for rot in s.rotations()]
-    # # for rot in rotations:
-    # #     print(rot)
-    # d = defaultdict(lambda: 0)
-    # for rot in rotations:
-    #     print(rot)
-    #     d[str(rot)] += 1
+# s = Scanner.from_str(RAW)
+# rotations = [Scanner.from_copy(rot) for rot in s.rotations()]
+# # for rot in rotations:
+# #     print(rot)
+# d = defaultdict(lambda: 0)
+# for rot in rotations:
+#     print(rot)
+#     d[str(rot)] += 1
 
-    # for k, v in d.items():
-    #     print(v)
+# for k, v in d.items():
+#     print(v)
 
 # print(max(d.values()))
 # print(unique(rotations))
