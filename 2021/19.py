@@ -204,7 +204,7 @@ class Scanner:
         self.points = [Point3D(-p.y, p.x, p.z) for p in self.points]
         return self
 
-    # https://stackoverflow.com/a/58471362
+    # https://stackoverflow.com/a/16467849
     def rotations(self) -> Iterator["Scanner"]:
         for cycle in range(2):
             for step in range(3):  # Yield RTTT 3 times
