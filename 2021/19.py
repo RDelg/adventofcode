@@ -1,5 +1,4 @@
-from dataclasses import dataclass
-from typing import Iterator, List
+from typing import Iterator, List, NamedTuple
 
 
 from tqdm import trange
@@ -154,11 +153,28 @@ RAW_2 = """\
 """
 
 
-@dataclass
-class Point3D:
+class Point3D(NamedTuple):
     x: int
     y: int
     z: int
+
+    def rotate_x_90(self) -> "Point3D":
+        return Point3D(self.x, -self.z, self.y)
+
+    def rotate_y_90(self) -> "Point3D":
+        return Point3D(self.z, self.y, -self.x)
+
+    def rotate_z_90(self) -> "Point3D":
+        return Point3D(-self.y, self.x, self.z)
+
+    # https://stackoverflow.com/a/16467849
+    def rotations(self) -> Iterator["Scanner"]:
+        for cycle in range(2):
+            for step in range(3):  # Yield RTTT 3 times
+                yield self.rotate_x_90()
+                for i in range(3):  #    Yield TTT
+                    yield self.rotate_z_90()
+            self.rotate_x_90().rotate_z_90().rotate_x_90()  # Do RTR
 
 
 class Scanner:
@@ -197,18 +213,18 @@ class Scanner:
         )
 
     def rotate_x_90(self) -> "Scanner":
-        for p in self.points:
-            p.y, p.z = -p.z, p.y
+        for i, p in enumerate(self.points):
+            self.points[i] = p.rotate_x_90()
         return self
 
     def rotate_y_90(self) -> "Scanner":
-        for p in self.points:
-            p.x, p.z = p.z, -p.x
+        for i, p in enumerate(self.points):
+            self.points[i] = p.rotate_y_90()
         return self
 
     def rotate_z_90(self) -> "Scanner":
-        for p in self.points:
-            p.x, p.y = -p.y, p.x
+        for i, p in enumerate(self.points):
+            self.points[i] = p.rotate_z_90()
         return self
 
     # https://stackoverflow.com/a/16467849
@@ -221,10 +237,11 @@ class Scanner:
             self.rotate_x_90().rotate_z_90().rotate_x_90()  # Do RTR
 
     def move(self, x: int, y: int, z: int) -> "Scanner":
-        for p in self.points:
-            p.x -= x
-            p.y -= y
-            p.z -= z
+        # for p in self.points:
+        #     p.x -= x
+        #     p.y -= y
+        #     p.z -= z
+        self.points = [Point3D(p[0] - x, p[1] - y, p[2] - z) for p in self.points]
         return self
 
     def matches(self, other: "Scanner") -> int:
@@ -277,6 +294,13 @@ class Map:
 
 
 if __name__ == "__main__":
+    # p = Point3D(1, 2, 3)
+    # sign = lambda x: (1, -1)[x < 0]
+    # get_rotation_dict = lambda x: ((x.x, sign(x.x)), (x.y, sign(x.y)), (x.z, sign(x.z)))
+    # r = [Point3D(*p) for p in p.rotations()]
+    # rotations_converted = [get_rotation_dict(x) for x in r]
+    # print(rotations_converted)
+
     RAW_0 = """
         --- scanner 0 ---
        -618,-824,-621
@@ -284,8 +308,7 @@ if __name__ == "__main__":
     scanner = Scanner.from_str(RAW_0).move(+68, -1246, -43)  # .move(+68, -1246, -43)
     print(scanner)
     for i, rot in enumerate(scanner.rotations()):
-        # if rot.points[0] == (686, 422, 578):
-        if (a := rot.points[0]).x == 686 and a.y == 422 and a.z == 578:
+        if (a := rot.points[0])[0] == 686 and a[1] == 422 and a[2] == 578:
             print("Found 1", i)
 
     RAW_0 = """
@@ -299,9 +322,9 @@ if __name__ == "__main__":
             for j in trange(-2_000, 2_000 + 1, desc="j", leave=False):
                 for k in trange(-2_000, 2_000 + 1, desc="k", disable=True):
                     if (
-                        (a := rot.points[0]).x + i == -618
-                        and a.y + j == -824
-                        and a.z + k == -621
+                        (a := rot.points[0])[0] + i == -618
+                        and a[1] + j == -824
+                        and a[2] + k == -621
                     ):
                         print("Found 2", i, j, k)
                         break
