@@ -304,6 +304,10 @@ if __name__ == "__main__":
     points_a = scanners[0].points_from_distances(distances)
     points_b = scanners[1].points_from_distances(distances)
 
+    for i, rot in enumerate(points_b.rotations()):
+        if len(s := set((points_a - rot).points)) == 1:
+            print("rotation: ", i, "offset:", s.pop())
+
     for i, rot in enumerate(points_a.rotations()):
         if len(s := set((points_b - rot).points)) == 1:
             print("rotation: ", i, "offset:", s.pop())
