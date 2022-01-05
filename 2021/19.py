@@ -1,19 +1,7 @@
-from typing import Iterator, List, NamedTuple
+from typing import Iterator, List, NamedTuple, Set
 
-
-from tqdm import trange
 
 RAW = """\
---- scanner 0 ---
--1,-1,1
--2,-2,2
--3,-3,3
--2,-3,1
-5,6,-4
-8,0,7
-"""
-
-RAW_2 = """\
 --- scanner 0 ---
 404,-588,-901
 528,-643,409
@@ -167,6 +155,32 @@ class Point3D(NamedTuple):
     def rotate_z_90(self) -> "Point3D":
         return Point3D(-self.y, self.x, self.z)
 
+    def edist(self, other: "Point3D") -> float:
+        return (sum((x - y) ** 2 for x, y in zip(self, other))) ** 0.5
+
+
+class PointsList:
+    def __init__(self, points: List[Point3D]):
+        self.points = points
+
+    def rotate_x_90(self) -> "Scanner":
+        for i, p in enumerate(self.points):
+            self.points[i] = p.rotate_x_90()
+        return self
+
+    def rotate_y_90(self) -> "Scanner":
+        for i, p in enumerate(self.points):
+            self.points[i] = p.rotate_y_90()
+        return self
+
+    def rotate_z_90(self) -> "Scanner":
+        for i, p in enumerate(self.points):
+            self.points[i] = p.rotate_z_90()
+        return self
+
+    def __iter__(self) -> Iterator[Point3D]:
+        return iter(self.points)
+
     # https://stackoverflow.com/a/16467849
     def rotations(self) -> Iterator["Scanner"]:
         for cycle in range(2):
@@ -176,19 +190,33 @@ class Point3D(NamedTuple):
                     yield self.rotate_z_90()
             self.rotate_x_90().rotate_z_90().rotate_x_90()  # Do RTR
 
+    def __sub__(self, other: "PointsList") -> "PointsList":
+        return PointsList(
+            [
+                Point3D(a[0] - b[0], a[1] - b[1], a[2] - b[2])
+                for a, b in zip(self.points, other.points)
+            ]
+        )
+
+    # Calculates the pairwise distanse between all points
+    def pdist(self):
+        return [p1.edist(p2) for p1 in self.points for p2 in self.points if p1 != p2]
+
 
 class Scanner:
     @classmethod
     def from_str(cls, data: str) -> "Scanner":
         data = data.strip().splitlines()
-        header, points = data[0], [Point3D(*map(int, x.split(","))) for x in data[1:]]
+        header, points = data[0], PointsList(
+            [Point3D(*map(int, x.split(","))) for x in data[1:]]
+        )
         return cls(id=int(header.split(" ")[-2]), points=points)
 
     @classmethod
     def from_copy(cls, scanner: "Scanner") -> "Scanner":
         return cls(id=scanner.id, points=scanner.points)
 
-    def __init__(self, id: str, points: List[Point3D]):
+    def __init__(self, id: str, points: PointsList):
         self.id = id
         self.points = points
         self.aligned = False
@@ -213,18 +241,15 @@ class Scanner:
         )
 
     def rotate_x_90(self) -> "Scanner":
-        for i, p in enumerate(self.points):
-            self.points[i] = p.rotate_x_90()
+        self.points.rotate_x_90()
         return self
 
     def rotate_y_90(self) -> "Scanner":
-        for i, p in enumerate(self.points):
-            self.points[i] = p.rotate_y_90()
+        self.points.rotate_y_90()
         return self
 
     def rotate_z_90(self) -> "Scanner":
-        for i, p in enumerate(self.points):
-            self.points[i] = p.rotate_z_90()
+        self.points.rotate_z_90()
         return self
 
     # https://stackoverflow.com/a/16467849
@@ -237,15 +262,26 @@ class Scanner:
             self.rotate_x_90().rotate_z_90().rotate_x_90()  # Do RTR
 
     def move(self, x: int, y: int, z: int) -> "Scanner":
-        # for p in self.points:
-        #     p.x -= x
-        #     p.y -= y
-        #     p.z -= z
         self.points = [Point3D(p[0] - x, p[1] - y, p[2] - z) for p in self.points]
         return self
 
-    def matches(self, other: "Scanner") -> int:
-        return len(set(self.points) & set(other.points))
+    def matches(self, other: "Scanner") -> Set[float]:
+        return set(self.points.pdist()) & set(other.points.pdist())
+
+    def points_from_distances(self, distances: Set[float]) -> PointsList:
+        points = list(
+            set(
+                [
+                    point1
+                    for point1 in self.points
+                    for point2 in self.points
+                    if point1.edist(point2) in distances
+                ]
+            )
+        )
+        return PointsList(
+            sorted(points, key=lambda p: sum([p.edist(p2) for p2 in points]))
+        )
 
 
 def load_scanners(data: str) -> List[Scanner]:
@@ -253,123 +289,21 @@ def load_scanners(data: str) -> List[Scanner]:
 
 
 class Map:
-    def __init__(self, scanners: List[Scanner], extra_border: int = 100):
-        max_range = self._maximum_range(scanners)
+    def __init__(self, scanners: List[Scanner]):
         self.aligned_scanners = [scanners.pop(0).align(None, Point3D(0, 0, 0))]
         self.remaining_scanners = scanners
-        self.max_range = max_range + extra_border
         self.align_scanners()
 
-    @staticmethod
-    def _maximum_range(scanners: List[Scanner]) -> int:
-        return max(
-            [
-                max([max(abs(p.x), abs(p.y), abs(p.z)) for p in s.points])
-                for s in scanners
-            ]
-        )
-
     def align_scanners(self) -> None:
-        k = self.aligned_scanners[0]
-        m = self.remaining_scanners[0]
-        # print("ASD\n", m)
-        # print("ZXC", k)
-        print(k)
-        print(m)
-        # b = [tuple(p) for p in k.points][0]
-        for rot in m.rotations():
-            a = [tuple(p) for p in rot.move(+68, -1246, -43).points][0]
-            print(a)
-        #     print(k.matches(rot.move(+68, -1246, -43)))
-
-        # for i in range(-self.max_range, self.max_range + 1):
-        #     for j in range(-self.max_range, self.max_range + 1):
-        #         for k in range(-self.max_range, self.max_range + 1):
-        #             for rot in self.remaining_scanners[1].rotations():
-        #                 if len((x := set(self.remaining_scanners[0]) & set(rot))):
-        #                     print("ZXCZXC")
-
-        #             for scanner in self.remaining_scanners:
-        #                 scanner.move(i, j, k)
+        pass
 
 
 if __name__ == "__main__":
-    # p = Point3D(1, 2, 3)
-    # sign = lambda x: (1, -1)[x < 0]
-    # get_rotation_dict = lambda x: ((x.x, sign(x.x)), (x.y, sign(x.y)), (x.z, sign(x.z)))
-    # r = [Point3D(*p) for p in p.rotations()]
-    # rotations_converted = [get_rotation_dict(x) for x in r]
-    # print(rotations_converted)
+    scanners = load_scanners(RAW)
+    distances = scanners[0].matches(scanners[1])
+    points_a = scanners[0].points_from_distances(distances)
+    points_b = scanners[1].points_from_distances(distances)
 
-    RAW_0 = """
-        --- scanner 0 ---
-       -618,-824,-621
-    """
-    scanner = Scanner.from_str(RAW_0).move(+68, -1246, -43)  # .move(+68, -1246, -43)
-    print(scanner)
-    for i, rot in enumerate(scanner.rotations()):
-        if (a := rot.points[0])[0] == 686 and a[1] == 422 and a[2] == 578:
-            print("Found 1", i)
-
-    RAW_0 = """
-        --- scanner 1 ---
-       686, 422, 578
-    """
-    scanner = Scanner.from_str(RAW_0)
-    print(scanner)
-    for rot in scanner.rotations():
-        for i in trange(-2_000, 2_000 + 1, desc="i"):
-            for j in trange(-2_000, 2_000 + 1, desc="j", leave=False):
-                for k in trange(-2_000, 2_000 + 1, desc="k", disable=True):
-                    if (
-                        (a := rot.points[0])[0] + i == -618
-                        and a[1] + j == -824
-                        and a[2] + k == -621
-                    ):
-                        print("Found 2", i, j, k)
-                        break
-
-    # # print(scanner)
-    # # print("ASDDS")
-    #
-    # a = [[tuple(p) for p in rot.points][0] for rot in scanner.rotations()]
-    # print(len(a), len(set(a)))
-    # # a = [tuple(p) for p in rot.points][0]
-    # b = [tuple(p) for p in rot.move(-68, +1246, +43).points][0]
-    # # print(a == b)
-    # # print(b)
-    # if b == (-618, -824, -621):
-    #     print("ASD")
-    #     print(scanner, rot)
-# if a[0] == 553 and a[1] == 889:
-#     print(a)
-#     asd = Scanner.from_copy(rot)
-
-# print(asd.matches(scanner))
-
-# 553,889,-390
-#     RAW_2 = """\
-# --- scanner 0 ---
-# -618,-824,-621
-
-# --- scanner 1 ---
-# 686,422,578
-# """
-
-#     scanners = load_scanners(RAW_2)
-#     m = Map(scanners)
-
-# s = Scanner.from_str(RAW)
-# rotations = [Scanner.from_copy(rot) for rot in s.rotations()]
-# # for rot in rotations:
-# #     print(rot)
-# d = defaultdict(lambda: 0)
-# for rot in rotations:
-#     print(rot)
-#     d[str(rot)] += 1
-
-# for k, v in d.items():
-#     print(v)
-
-# print(max(d.values()))
-# print(unique(rotations))
+    for i, rot in enumerate(points_a.rotations()):
+        if len(s := set((points_b - rot).points)) == 1:
+            print("rotation: ", i, "offset:", s.pop())
