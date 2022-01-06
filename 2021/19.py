@@ -1,4 +1,4 @@
-from typing import Iterator, List, NamedTuple, Set
+from typing import Iterable, Iterator, List, NamedTuple, Set, Tuple
 
 
 RAW = """\
@@ -159,64 +159,40 @@ class Point3D(NamedTuple):
         return (sum((x - y) ** 2 for x, y in zip(self, other))) ** 0.5
 
 
-class PointsList:
-    def __init__(self, points: List[Point3D]):
-        self.points = points
-
-    def rotate_x_90(self) -> "Scanner":
-        for i, p in enumerate(self.points):
-            self.points[i] = p.rotate_x_90()
-        return self
-
-    def rotate_y_90(self) -> "Scanner":
-        for i, p in enumerate(self.points):
-            self.points[i] = p.rotate_y_90()
-        return self
-
-    def rotate_z_90(self) -> "Scanner":
-        for i, p in enumerate(self.points):
-            self.points[i] = p.rotate_z_90()
-        return self
-
-    def __iter__(self) -> Iterator[Point3D]:
-        return iter(self.points)
-
+def rotations(points: List[Point3D]) -> Iterable[List[Point3D]]:
     # https://stackoverflow.com/a/16467849
-    def rotations(self) -> Iterator["Scanner"]:
-        for cycle in range(2):
-            for step in range(3):  # Yield RTTT 3 times
-                yield self.rotate_x_90()
-                for i in range(3):  #    Yield TTT
-                    yield self.rotate_z_90()
-            self.rotate_x_90().rotate_z_90().rotate_x_90()  # Do RTR
+    for cycle in range(2):
+        for step in range(3):  # Yield RTTT 3 times
+            points = [p.rotate_x_90() for p in points]
+            yield points
+            for i in range(3):  # Yield TTT
+                points = [p.rotate_z_90() for p in points]
+                yield points
+        points = [p.rotate_x_90().rotate_z_90().rotate_x_90() for p in points]  # Do RTR
 
-    def __sub__(self, other: "PointsList") -> "PointsList":
-        return PointsList(
-            [
-                Point3D(a[0] - b[0], a[1] - b[1], a[2] - b[2])
-                for a, b in zip(self.points, other.points)
-            ]
-        )
 
-    # Calculates the pairwise distanse between all points
-    def pdist(self):
-        return [p1.edist(p2) for p1 in self.points for p2 in self.points if p1 != p2]
+def sub_list(x: List[Point3D], y: List[Point3D]) -> List[Point3D]:
+    return [Point3D(a[0] - b[0], a[1] - b[1], a[2] - b[2]) for a, b in zip(x, y)]
+
+
+# Calculates the pairwise distanse between all points
+def pdist(points: List[Point3D]) -> List[float]:
+    return [p1.edist(p2) for p1 in points for p2 in points if p1 != p2]
 
 
 class Scanner:
     @classmethod
     def from_str(cls, data: str) -> "Scanner":
         data = data.strip().splitlines()
-        header, points = data[0], PointsList(
-            [Point3D(*map(int, x.split(","))) for x in data[1:]]
-        )
+        header, points = data[0], [Point3D(*map(int, x.split(","))) for x in data[1:]]
+
         return cls(id=int(header.split(" ")[-2]), points=points)
 
     @classmethod
     def from_copy(cls, scanner: "Scanner") -> "Scanner":
         return cls(id=scanner.id, points=scanner.points)
 
-    def __init__(self, id: str, points: PointsList):
+    def __init__(self, id: str, points: List[Point3D]):
         self.id = id
         self.points = points
         self.aligned = False
@@ -224,7 +200,10 @@ class Scanner:
         self.pos = None
 
     def align(self, reference: "Scanner", pos: Point3D) -> "Scanner":
+        if reference is not None:
+            print("ALIGNING", self.id, reference.id, reference.aligned, pos)
         self.reference = reference
+        self.move(*pos)
         self.pos = pos
         self.aligned = True
         return self
@@ -240,35 +219,20 @@ class Scanner:
             [f"{p.x},{p.y},{p.z}" for p in self.points]
         )
 
-    def rotate_x_90(self) -> "Scanner":
-        self.points.rotate_x_90()
+    def rotate(self, iters: int) -> "Scanner":
+        for _, rot in zip(range(iters), rotations(self.points)):
+            pass
+        self.points = rot
         return self
-
-    def rotate_y_90(self) -> "Scanner":
-        self.points.rotate_y_90()
-        return self
-
-    def rotate_z_90(self) -> "Scanner":
-        self.points.rotate_z_90()
-        return self
-
-    # https://stackoverflow.com/a/16467849
-    def rotations(self) -> Iterator["Scanner"]:
-        for cycle in range(2):
-            for step in range(3):  # Yield RTTT 3 times
-                yield self.rotate_x_90()
-                for i in range(3):  #    Yield TTT
-                    yield self.rotate_z_90()
-            self.rotate_x_90().rotate_z_90().rotate_x_90()  # Do RTR
 
     def move(self, x: int, y: int, z: int) -> "Scanner":
-        self.points = [Point3D(p[0] - x, p[1] - y, p[2] - z) for p in self.points]
+        self.points = [Point3D(p[0] + x, p[1] + y, p[2] + z) for p in self.points]
         return self
 
     def matches(self, other: "Scanner") -> Set[float]:
-        return set(self.points.pdist()) & set(other.points.pdist())
+        return set(pdist(self.points)) & set(pdist(other.points))
 
-    def points_from_distances(self, distances: Set[float]) -> PointsList:
+    def points_from_distances(self, distances: Set[float]) -> List[Point3D]:
         points = list(
             set(
                 [
@@ -279,9 +243,7 @@ class Scanner:
                 ]
             )
         )
-        return PointsList(
-            sorted(points, key=lambda p: sum([p.edist(p2) for p2 in points]))
-        )
+        return sorted(points, key=lambda p: sum([p.edist(p2) for p2 in points]))
 
 
 def load_scanners(data: str) -> List[Scanner]:
@@ -294,20 +256,52 @@ class Map:
         self.remaining_scanners = scanners
         self.align_scanners()
 
+    def find_rotation(
+        self, points_a: List[Point3D], points_b: List[Point3D]
+    ) -> Tuple[int, Point3D]:
+        for i, rot in enumerate(rotations(points_b)):
+            if len(s := set(sub_list(points_a, rot))) == 1:
+                offset = s.pop()
+                iterations = i
+                return iterations + 1, offset
+        return None, None
+
     def align_scanners(self) -> None:
-        pass
+        remaining = len(self.remaining_scanners)
+        while remaining > 0:
+            for i, scanner in enumerate(self.remaining_scanners):
+                for j, reference in enumerate(self.aligned_scanners):
+                    if (
+                        not scanner.aligned
+                        and len(distances := scanner.matches(reference)) == 66
+                    ):
+                        points_s = scanner.points_from_distances(distances)
+                        points_r = reference.points_from_distances(distances)
+                        iterations, offset = self.find_rotation(points_r, points_s)
+                        self.aligned_scanners.append(
+                            scanner.rotate(iters=iterations).align(reference, offset)
+                        )
+                        remaining -= 1
+
+    def beacons(self) -> List[Point3D]:
+        return list(
+            set(
+                [point for scanner in self.aligned_scanners for point in scanner.points]
+            )
+        )
 
 
 if __name__ == "__main__":
+    # Data
+    with open("data/19.txt") as f:
+        data = f.read()
+
+    # Part 1
+    # Demo
     scanners = load_scanners(RAW)
-    distances = scanners[0].matches(scanners[1])
-    points_a = scanners[0].points_from_distances(distances)
-    points_b = scanners[1].points_from_distances(distances)
+    m = Map(scanners)
+    assert len(m.beacons()) == 79
 
-    for i, rot in enumerate(points_b.rotations()):
-        if len(s := set((points_a - rot).points)) == 1:
-            print("rotation: ", i, "offset:", s.pop())
-
-    for i, rot in enumerate(points_a.rotations()):
-        if len(s := set((points_b - rot).points)) == 1:
-            print("rotation: ", i, "offset:", s.pop())
+    scanners = load_scanners(data)
+    m = Map(scanners)
+    print("Part 1:", len(m.beacons()))
