@@ -155,8 +155,11 @@ class Point3D(NamedTuple):
     def rotate_z_90(self) -> "Point3D":
         return Point3D(-self.y, self.x, self.z)
 
-    def edist(self, other: "Point3D") -> float:
+    def euclidean_dist(self, other: "Point3D") -> float:
         return (sum((x - y) ** 2 for x, y in zip(self, other))) ** 0.5
+
+    def manhattan_dist(self, other: "Point3D") -> float:
+        return sum(abs(x - y) for x, y in zip(self, other))
 
 
 def rotations(points: List[Point3D]) -> Iterable[List[Point3D]]:
@@ -175,9 +178,14 @@ def sub_list(x: List[Point3D], y: List[Point3D]) -> List[Point3D]:
     return [Point3D(a[0] - b[0], a[1] - b[1], a[2] - b[2]) for a, b in zip(x, y)]
 
 
-# Calculates the pairwise distanse between all points
+# Calculates the pairwise euclidean distanse between all points
 def pdist(points: List[Point3D]) -> List[float]:
-    return [p1.edist(p2) for p1 in points for p2 in points if p1 != p2]
+    return [p1.euclidean_dist(p2) for p1 in points for p2 in points if p1 != p2]
+
+
+# Calculates the pairwise manhattan distanse between all points
+def manhattan_pdist(points: List[Point3D]) -> List[float]:
+    return [p1.manhattan_dist(p2) for p1 in points for p2 in points if p1 != p2]
 
 
 class Scanner:
@@ -239,11 +247,13 @@ class Scanner:
                     point1
                     for point1 in self.points
                     for point2 in self.points
-                    if point1.edist(point2) in distances
+                    if point1.euclidean_dist(point2) in distances
                 ]
             )
         )
-        return sorted(points, key=lambda p: sum([p.edist(p2) for p2 in points]))
+        return sorted(
+            points, key=lambda p: sum([p.euclidean_dist(p2) for p2 in points])
+        )
 
 
 def load_scanners(data: str) -> List[Scanner]:
@@ -296,12 +306,16 @@ if __name__ == "__main__":
     with open("data/19.txt") as f:
         data = f.read()
 
-    # Part 1
     # Demo
     scanners = load_scanners(RAW)
     m = Map(scanners)
+    # Part 1
     assert len(m.beacons()) == 79
+    # Part 2
+    assert max(manhattan_pdist([s.pos for s in m.aligned_scanners])) == 3621
 
+    # Real
     scanners = load_scanners(data)
     m = Map(scanners)
     print("Part 1:", len(m.beacons()))
+    print("Part 2:", max(manhattan_pdist([s.pos for s in m.aligned_scanners])))
