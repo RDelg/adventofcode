@@ -1,4 +1,7 @@
-from typing import Iterator, List, Tuple
+from collections import defaultdict
+from typing import Dict, Iterator, List, Tuple
+from functools import lru_cache
+from itertools import product
 
 
 RAW = """\
@@ -38,14 +41,33 @@ def play_1(data: str, iters: int = 500) -> Tuple[int, int, int]:
     return p1s, p2s, i
 
 
-if __name__ == "__main__":
-    with open("data/21.txt") as f:
-        data = f.read()
+@lru_cache(maxsize=None)
+def roll(n: int) -> Dict[int, int]:
+    sums = defaultdict(lambda: 0)
+    for x in product(range(1, 4), repeat=n):
+        sums[sum(x)] += 1
+    return sums
 
-    # Part 1
-    # Demo
-    p1s, p2s, its = play_1(RAW)
-    assert min(p1s, p2s) * (its + 1) * 3 == 739785
-    # Real
-    p1s, p2s, its = play_1(data)
-    print("Part 1:", min(p1s, p2s) * (its + 1) * 3)
+
+def dirac_roll(s1: int, s2: int) -> List[List[int]]:
+    n_rolls = 3
+    rolls = roll(n_rolls).items()
+    print(rolls)
+
+    for p1, p2 in product(rolls, repeat=2):
+        print(p1, p2)
+
+
+if __name__ == "__main__":
+    # with open("data/21.txt") as f:
+    #     data = f.read()
+
+    # # Part 1
+    # # Demo
+    # p1s, p2s, its = play_1(RAW)
+    # assert min(p1s, p2s) * (its + 1) * 3 == 739785
+    # # Real
+    # p1s, p2s, its = play_1(data)
+    # print("Part 1:", min(p1s, p2s) * (its + 1) * 3)
+
+    print(dirac_roll(1, 2))
