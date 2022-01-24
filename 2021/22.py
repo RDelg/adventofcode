@@ -98,7 +98,7 @@ class Cube:
                 cubes[k-1].z - cubes[k].z + cubes[k - 1].d*k
             ))
         overlap = self.overlap(other)
-        cubes = self._sort([overlap, cubes[-1]])
+        cubes = [overlap, cubes[-1]]
         for i, j, k in product([0, 1], repeat=3):
             result.append(Cube(
                 cubes[0].x + cubes[i].w * (i == 0),
