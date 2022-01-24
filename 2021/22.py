@@ -1,5 +1,5 @@
+from itertools import product
 from typing import List, Tuple
-
 
 RAW = """\
 on x=-20..26,y=-36..17,z=-47..7
@@ -73,9 +73,43 @@ class Cube:
             min(self.z + self.d, other.z + other.d) - z,
         )
 
+    @staticmethod
+    def _sort(cubes: List["Cube"]) -> List["Cube"]:
+        return sorted(cubes, key=lambda c: min(c.x, c.y, c.z))
+
+    def __hash__(self) -> str:
+        return hash((
+            self.x, self.y, self.z, self.w, self.h, self.d
+        ))
+
+    def __eq__(self, other: "Cube") -> bool:
+        return hash(self) == hash(other)
+
     def __add__(self, other: "Cube") -> List["Cube"]:
-        # TODO
-        pass
+        result = []
+        cubes = self._sort([self, other])
+        for i, j, k in product([0, 1], repeat=3):
+            result.append(Cube(
+                cubes[i].x,
+                cubes[j].y,
+                cubes[k].z,
+                cubes[i-1].x - cubes[i].x + cubes[i - 1].w*i,
+                cubes[j-1].y - cubes[j].y + cubes[j - 1].h*j,
+                cubes[k-1].z - cubes[k].z + cubes[k - 1].d*k
+            ))
+        overlap = self.overlap(other)
+        cubes = self._sort([overlap, cubes[-1]])
+        for i, j, k in product([0, 1], repeat=3):
+            result.append(Cube(
+                cubes[0].x + cubes[i].w * (i == 0),
+                cubes[0].y + cubes[j].h * (j == 0),
+                cubes[0].z + cubes[k].d * (k == 0),
+                cubes[i-1].w - cubes[0].w*(i == 0),
+                cubes[j-1].h - cubes[0].h*(j == 0),
+                cubes[k-1].d - cubes[0].d*(k == 0),
+            ))
+
+        return list(set(result))
 
     def __sub__(self, other: "Cube") -> List["Cube"]:
         # TODO
@@ -91,7 +125,9 @@ def parse(s: str) -> List[Tuple[str, Cube]]:
 if __name__ == "__main__":
     cubes = parse(RAW)
     print(cubes[0], cubes[1])
+
     i, j = 0, 1
     if cubes[i][1].is_overlap(cubes[j][1]):
         print("Overlaps")
         print(cubes[i][1].overlap(cubes[j][1]))
+        print(len(cubes[i][1] + cubes[j][1]))
