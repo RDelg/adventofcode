@@ -77,7 +77,7 @@ class Cube:
     def _sort(cubes: List["Cube"]) -> List["Cube"]:
         return sorted(cubes, key=lambda c: min(c.x, c.y, c.z))
 
-    def __hash__(self) -> str:
+    def __hash__(self) -> int:
         return hash((
             self.x, self.y, self.z, self.w, self.h, self.d
         ))
