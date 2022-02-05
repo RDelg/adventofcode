@@ -192,17 +192,40 @@ class Cube:
 
     @property
     def volume(self) -> int:
-        return self.w * self.h * self.d
+        return (self.w + 1) * (self.h + 1) * (self.d + 1)
 
 
-def parse(s: str) -> List[Tuple[str, Cube]]:
+def parse(data: str) -> List[Tuple[str, Cube]]:
     return [
-        ((x := s.split(" "))[0], Cube.from_str(x[1])) for s in RAW.strip().split("\n")
+        ((x := s.split(" "))[0], Cube.from_str(x[1])) for s in data.strip().split("\n")
     ]
+
+
+class Space:
+    def __init__(self, n: int):
+        self.grid = [[[False] * n for _ in range(n)] for _ in range(n)]
+        self.offset = n // 2
+
+    def add(self, c: Cube):
+        for x in range(c.x, c.x + c.w + 1):
+            for y in range(c.y, c.y + c.h + 1):
+                for z in range(c.z, c.z + c.d + 1):
+                    self.grid[x + self.offset][y + self.offset][z + self.offset] = True
+
+    def remove(self, c: Cube):
+        for x in range(c.x, c.x + c.w + 1):
+            for y in range(c.y, c.y + c.h + 1):
+                for z in range(c.z, c.z + c.d + 1):
+                    self.grid[x + self.offset][y + self.offset][z + self.offset] = False
+
+    def n_on(self) -> int:
+        return sum(sum(sum(row) for row in layer) for layer in self.grid)
 
 
 def part_1(cubes: List[Tuple[str, Cube]]) -> int:
     new_cubes = [cubes.pop(0)[1]]
+    space = Space(200)
+    space.add(new_cubes[0])
     for action, cube in cubes:
         p = max(abs(cube.x), abs(cube.y), abs(cube.z))
         if p > 50:
@@ -211,13 +234,32 @@ def part_1(cubes: List[Tuple[str, Cube]]) -> int:
         else:
             if action == "on":
                 new_cubes = list(set([c2 for c in new_cubes for c2 in (c + cube)]))
+                print(new_cubes)
+                space.add(cube)
             elif action == "off":
+                space.remove(cube)
                 new_cubes = list(set([c2 for c in new_cubes for c2 in (c - cube)]))
             else:
                 raise ValueError(f"unknown action {action}")
-    return sum(c.volume for c in new_cubes)
+    return space.n_on(), sum(c.volume for c in new_cubes)
 
 
 if __name__ == "__main__":
+    # Data
+    with open("data/22.txt") as f:
+        data = f.read()
+    # Part 1
+    # Demo
     cubes = parse(RAW)
+    assert part_1(cubes)[0] == 590784
+    # Real
+    cubes = parse(data)
+    print("Part 1:", part_1(cubes)[0])
+
+    RAW = """\
+on x=-0..4,y=0..4,z=0..4
+off x=1..2,y=1..2,z=1..2
+"""
+    cubes = parse(RAW)[:2]
+    print(cubes)
     print(part_1(cubes))
