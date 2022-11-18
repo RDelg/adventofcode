@@ -341,16 +341,12 @@ if __name__ == "__main__":
         
         def max_distance_from_origin(self) -> int:
             return max(self.x.max_distance_from_origin(), self.y.max_distance_from_origin(), self.z.max_distance_from_origin())
-
-        def overlap_volume(self, other: "Cube") -> int:
-            if self.is_overlap(other):
-                return (self.x.end - max(self.x.start, other.x.start) + 1) * (self.y.end - max(self.y.start, other.y.start) + 1) * (self.z.end - max(self.z.start, other.z.start) + 1)
-            else:
-                return 0
             
     
     class Space:
         def __init__(self, cubes: list[Cube]) -> None:
+            for cube in cubes:
+                print(cube)
             self._volume = 0
             self._cubes = cubes
             self._added_cubes = []
@@ -358,15 +354,16 @@ if __name__ == "__main__":
                 self._add_volume(cube)
         
         def _add_volume(self, cube: Cube) -> None:
-            if self._volume == 0:
-                self._volume = cube.volume()
-                self._added_cubes.append(cube)
-            else:
-                new_cubes = [cube]
-                for c in self._added_cubes:
-                    new_cubes = [item for sublist in [n - c for n in new_cubes] for item in sublist] #[item for sublist in new_result for item in sublist]
-                self._added_cubes.append(cube)
-                self._volume += sum([c.volume() for c in new_cubes])
+            self._volume += cube.volume()
+            # if self._volume == 0:
+            #     self._volume = cube.volume()
+            #     self._added_cubes.append(cube)
+            # else:
+            #     new_cubes = [cube]
+            #     for c in self._added_cubes:
+            #         new_cubes = [item for sublist in [n - c for n in new_cubes] for item in sublist] #[item for sublist in new_result for item in sublist]
+            #     self._added_cubes.append(cube)
+            #     self._volume += sum([c.volume() for c in new_cubes])
         
         @property
         def volume(self) -> int:
@@ -396,30 +393,13 @@ if __name__ == "__main__":
                 result = [item for sublist in new_result for item in sublist]
         s = Space(result)
         print(s.volume)
+        print(s._added_cubes)
         
-        return 
+        return s.volume
 
-    solution(RAW)
+    RAW = """\
+on x=-0..4,y=0..4,z=0..4
+off x=1..2,y=1..2,z=1..2
+"""
+    assert solution(RAW) == 117, "%s is not 117" % solution(RAW)
     
-
-    # s = r[0].volume()
-    # for i in range(1, len(r)):
-    #     l = []
-    #     for j in range(i):
-    #         l.
-
-
-    # print(parse(RAW)[0][1] + parse(RAW)[0][1])
-
-    # assert part_1(cubes)[0] == 590784
-#     # Real
-#     cubes = parse(data)
-#     print("Part 1:", part_1(cubes)[0])
-
-#     RAW = """\
-# on x=-0..4,y=0..4,z=0..4
-# off x=1..2,y=1..2,z=1..2
-# """
-#     cubes = parse(RAW)[:2]
-#     print(cubes)
-#     print(part_1(cubes))
