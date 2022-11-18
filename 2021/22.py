@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from itertools import product
 from typing import List, Tuple
 
@@ -201,47 +202,8 @@ def parse(data: str) -> List[Tuple[str, Cube]]:
     ]
 
 
-class Space:
-    def __init__(self, n: int):
-        self.grid = [[[False] * n for _ in range(n)] for _ in range(n)]
-        self.offset = n // 2
-
-    def add(self, c: Cube):
-        for x in range(c.x, c.x + c.w + 1):
-            for y in range(c.y, c.y + c.h + 1):
-                for z in range(c.z, c.z + c.d + 1):
-                    self.grid[x + self.offset][y + self.offset][z + self.offset] = True
-
-    def remove(self, c: Cube):
-        for x in range(c.x, c.x + c.w + 1):
-            for y in range(c.y, c.y + c.h + 1):
-                for z in range(c.z, c.z + c.d + 1):
-                    self.grid[x + self.offset][y + self.offset][z + self.offset] = False
-
-    def n_on(self) -> int:
-        return sum(sum(sum(row) for row in layer) for layer in self.grid)
 
 
-def part_1(cubes: List[Tuple[str, Cube]]) -> int:
-    new_cubes = [cubes.pop(0)[1]]
-    space = Space(200)
-    space.add(new_cubes[0])
-    for action, cube in cubes:
-        p = max(abs(cube.x), abs(cube.y), abs(cube.z))
-        if p > 50:
-            print(f"passing {cube}")
-            continue
-        else:
-            if action == "on":
-                new_cubes = list(set([c2 for c in new_cubes for c2 in (c + cube)]))
-                print(new_cubes)
-                space.add(cube)
-            elif action == "off":
-                space.remove(cube)
-                new_cubes = list(set([c2 for c in new_cubes for c2 in (c - cube)]))
-            else:
-                raise ValueError(f"unknown action {action}")
-    return space.n_on(), sum(c.volume for c in new_cubes)
 
 
 if __name__ == "__main__":
@@ -250,16 +212,214 @@ if __name__ == "__main__":
         data = f.read()
     # Part 1
     # Demo
-    cubes = parse(RAW)
-    assert part_1(cubes)[0] == 590784
-    # Real
-    cubes = parse(data)
-    print("Part 1:", part_1(cubes)[0])
+    # cubes = parse(RAW)
+    # print(cubes[0][1] + cubes[0][1])
 
-    RAW = """\
-on x=-0..4,y=0..4,z=0..4
-off x=1..2,y=1..2,z=1..2
-"""
-    cubes = parse(RAW)[:2]
-    print(cubes)
-    print(part_1(cubes))
+    @dataclass
+    class Segment:
+        start: int
+        end: int
+
+        def __add__(self, other: "Segment") -> List["Segment"]:
+            if self.is_overlap(other):
+                return [Segment(min(self.start, other.start), max(self.end, other.end))]
+            else:
+                return [self, other]
+        
+        def __sub__(self, other: "Segment") -> List["Segment"]:
+            if self.is_overlap(other):
+                result = []
+                if (x:=Segment(self.start, other.start - 1)).is_valid():
+                    result.append(x)
+                if (x:=Segment(other.end + 1, self.end)).is_valid():
+                    result.append(x)
+                return result
+            else:
+                return [self]
+            
+        def __contains__(self, item: int) -> bool:
+            return self.start <= item <= self.end
+
+        def is_overlap(self, other: "Segment") -> bool:
+            return self.start <= other.start <= self.end or self.start <= other.end <= self.end
+        
+        def __repr__(self) -> str:
+            return f"Segment({self.start}, {self.end})"
+        
+        def is_valid(self) -> bool:
+            return self.start <= self.end
+        
+        def max_distance_from_origin(self) -> int:
+            return max(abs(self.start), abs(self.end))
+        
+    @dataclass
+    class Square:
+        x: Segment
+        y: Segment
+        
+        def __add__(self, other: "Square") -> List["Square"]:
+            if self.is_overlap(other):
+                return [Square(self.x + other.x, self.y + other.y)]
+            else:
+                return [self, other]
+        
+        def __sub__(self, other: "Square") -> List["Square"]:
+            if self.is_overlap(other):
+                result = []
+                for x in self.x - other.x:
+                    for y in self.y - other.y:
+                        result.append(Square(x, y))
+                return result
+            else:
+                return [self]
+        
+        def __repr__(self) -> str:
+            return f"Square({self.x}, {self.y})"
+        
+        def is_overlap(self, other: "Square") -> bool:
+            return self.x.is_overlap(other.x) and self.y.is_overlap(other.y)
+        
+        def is_valid(self) -> bool:
+            return self.x.is_valid() and self.y.is_valid()
+        
+        def volume(self) -> int:
+            return (self.x.end - self.x.start + 1) * (self.y.end - self.y.start + 1)
+        
+    
+    # print(Square(Segment(0, 10), Segment(0, 10)) - Square(Segment(2, 4), Segment(2, 4)))
+    
+    @dataclass
+    class Cube:
+        x: Segment
+        y: Segment
+        z: Segment
+        
+        def __add__(self, other: "Cube") -> List["Cube"]:
+            # if self.is_overlap(other):
+            #     return [Cube(self.x + other.x, self.y + other.y, self.z + other.z)]
+            if self.is_overlap(other):
+                result = []
+                for x in self.x + other.x:
+                    for y in self.y + other.y:
+                        for z in self.z + other.z:
+                            result.append(Cube(x, y, z))
+                return result
+            else:
+                return [self, other]
+        
+        def __sub__(self, other: "Cube") -> List["Cube"]:
+            if self.is_overlap(other):
+                result = []
+                for x in self.x - other.x:
+                    for y in self.y - other.y:
+                        for z in self.z - other.z:
+                            result.append(Cube(x, y, z))
+                return result
+            else:
+                return [self]
+        
+        def __repr__(self) -> str:
+            return f"Cube({self.x}, {self.y}, {self.z})"
+        
+        def is_overlap(self, other: "Cube") -> bool:
+            return self.x.is_overlap(other.x) and self.y.is_overlap(other.y) and self.z.is_overlap(other.z)
+        
+        def is_valid(self) -> bool:
+            return self.x.is_valid() and self.y.is_valid() and self.z.is_valid()
+        
+        def volume(self) -> int:
+            return (self.x.end - self.x.start + 1) * (self.y.end - self.y.start + 1) * (self.z.end - self.z.start + 1)
+            
+        @classmethod
+        def from_str(cls, s: str) -> "Cube":
+            x, y, z = s.split(",")
+            return Cube(
+                Segment(int((xx:=x.split("=")[1].split(".."))[0]), int(xx[1])),
+                Segment(int((yy:=y.split("=")[1].split(".."))[0]), int(yy[1])),
+                Segment(int((zz:=z.split("=")[1].split(".."))[0]), int(zz[1])),
+            )
+        
+        def max_distance_from_origin(self) -> int:
+            return max(self.x.max_distance_from_origin(), self.y.max_distance_from_origin(), self.z.max_distance_from_origin())
+
+        def overlap_volume(self, other: "Cube") -> int:
+            if self.is_overlap(other):
+                return (self.x.end - max(self.x.start, other.x.start) + 1) * (self.y.end - max(self.y.start, other.y.start) + 1) * (self.z.end - max(self.z.start, other.z.start) + 1)
+            else:
+                return 0
+            
+    
+    class Space:
+        def __init__(self, cubes: list[Cube]) -> None:
+            self._volume = 0
+            self._cubes = cubes
+            self._added_cubes = []
+            for cube in cubes:
+                self._add_volume(cube)
+        
+        def _add_volume(self, cube: Cube) -> None:
+            if self._volume == 0:
+                self._volume = cube.volume()
+                self._added_cubes.append(cube)
+            else:
+                new_cubes = [cube]
+                for c in self._added_cubes:
+                    new_cubes = [item for sublist in [n - c for n in new_cubes] for item in sublist] #[item for sublist in new_result for item in sublist]
+                self._added_cubes.append(cube)
+                self._volume += sum([c.volume() for c in new_cubes])
+        
+        @property
+        def volume(self) -> int:
+            return self._volume
+
+    
+    def parse(data: str) -> List[Tuple[str, Cube]]:
+        return [
+            ((x := s.split(" "))[0], Cube.from_str(x[1])) for s in data.strip().split("\n")
+        ]
+
+    def solution(data: str) -> int:
+        cubes = parse(data)
+        result = [cubes.pop(0)[1]]
+        for action, cube in cubes:
+            p = cube.max_distance_from_origin()
+            if p > 50:
+                print(f"passing {cube}")
+                continue
+            else:
+                if action == "on":
+                    new_result = [r + cube for r in result]    
+                elif action == "off":
+                    new_result = [r - cube for r in result]
+                else:
+                    raise ValueError(f"unknown action {action}")
+                result = [item for sublist in new_result for item in sublist]
+        s = Space(result)
+        print(s.volume)
+        
+        return 
+
+    solution(RAW)
+    
+
+    # s = r[0].volume()
+    # for i in range(1, len(r)):
+    #     l = []
+    #     for j in range(i):
+    #         l.
+
+
+    # print(parse(RAW)[0][1] + parse(RAW)[0][1])
+
+    # assert part_1(cubes)[0] == 590784
+#     # Real
+#     cubes = parse(data)
+#     print("Part 1:", part_1(cubes)[0])
+
+#     RAW = """\
+# on x=-0..4,y=0..4,z=0..4
+# off x=1..2,y=1..2,z=1..2
+# """
+#     cubes = parse(RAW)[:2]
+#     print(cubes)
+#     print(part_1(cubes))
