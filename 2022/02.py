@@ -126,4 +126,4 @@ if __name__ == "__main__":
     print("Part 1:", part_1(data))
     # Part 2
     assert part_2(RAW) == 12
-    print("Part 1:", part_2(data))
+    print("Part 2:", part_2(data))
