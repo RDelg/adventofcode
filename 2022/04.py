@@ -21,7 +21,7 @@ class Range:
     def __contains__(self, other: "Range") -> bool:
         return self.start <= other.start <= other.end <= self.end
 
-    def overlap(self, other: "Range") -> bool:
+    def overlaps(self, other: "Range") -> bool:
         return (
             self.start <= other.start <= self.end
             or other.start <= self.start <= other.end
@@ -42,7 +42,7 @@ def part_1(data: str) -> int:
 
 def part_2(data: str) -> int:
     range_pairs = parse(data)
-    return sum([1 for a, b in range_pairs if a.overlap(b) or b.overlap(a)])
+    return sum([1 for a, b in range_pairs if a.overlaps(b) or b.overlaps(a)])
 
 
 if __name__ == "__main__":
