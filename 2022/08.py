@@ -22,29 +22,13 @@ class Forest:
     n: int
     m: int
     trees: list[list[int]]
-    height_from_tree: dict[Directions, tuple[int, int] | None] = None
 
     @classmethod
     def from_quadcopter(cls, data: str) -> "Forest":
         lines = data.splitlines()
         trees = [[int(line) for line in x] for x in lines]
         n, m = len(lines), len(lines[0])
-        height_from_tree = [
-            [
-                {
-                    Directions.UP: None,
-                    Directions.DOWN: None,
-                    Directions.LEFT: None,
-                    Directions.RIGHT: None,
-                }
-                for _ in range(m)
-            ]
-            for _ in range(n)
-        ]
-        return cls(n, m, trees, height_from_tree)
-
-    def __getitem__(self, key: tuple[int, int]) -> int:
-        return self.trees[key[0]][key[1]]
+        return cls(n, m, trees)
 
     def towards_up_height_from_point(self, i: int, j: int) -> list[int]:
         return [tree[j] for tree in self.trees[:i]][::-1]
@@ -118,7 +102,7 @@ if __name__ == "__main__":
         data = f.read()
     # part 1
     assert part_1(EXAMPLE) == 21
-    print(f"Part 1:\n{part_1(data)}")
+    print(f"Part 1: {part_1(data)}")
     # part 2
     assert part_2(EXAMPLE) == 8
     print(f"Part 2: {part_2(data)}")
