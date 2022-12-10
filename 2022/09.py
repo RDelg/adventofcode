@@ -13,6 +13,16 @@ D 1
 L 5
 R 2"""
 
+EXAMPLE_2 = """\
+R 5
+U 8
+L 8
+D 3
+R 17
+D 10
+L 25
+U 20"""
+
 
 class Direction(str, Enum):
     RIGHT = "R"
@@ -34,55 +44,57 @@ class Position:
 
 
 class Rope:
-    head: Position
-    tail: Position
+    knots: list[Position]
 
-    def __init__(self, head: Position, tail: Position):
-        self.head = head
-        self.tail = tail
+    def __init__(self, knots: list[Position]):
+        self.knots = knots
 
     @classmethod
-    def zero(cls):
-        return cls(Position(0, 0), Position(0, 0))
+    def zero(cls, length: int = 2):
+        return cls([Position(0, 0) for _ in range(length)])
 
     def _move_tail(self):
+        for i in range(1, len(self.knots)):
+            head = self.knots[i - 1]
+            tail = self.knots[i]
 
-        x_diff, x_sign = (
-            abs((x := self.head.x - self.tail.x)),
-            int(math.copysign(1, x)),
-        )
+            x_diff, x_sign = (
+                abs((x := head.x - tail.x)),
+                int(math.copysign(1, x)),
+            )
 
-        y_diff, y_sign = (
-            abs((x := self.head.y - self.tail.y)),
-            int(math.copysign(1, x)),
-        )
+            y_diff, y_sign = (
+                abs((x := head.y - tail.y)),
+                int(math.copysign(1, x)),
+            )
 
-        # print(self.head, self.tail, x_diff, x_sign, y_diff, y_sign)
+            is_same = x_diff == 0 and y_diff == 0
+            is_adjacent = x_diff == 1 and y_diff == 0 or x_diff == 0 and y_diff == 1
+            is_diagonal = x_diff == 1 and y_diff == 1
 
-        if x_diff == 0 and y_diff == 0:
-            return
+            if is_same or is_adjacent or is_diagonal:
+                break
 
-        if x_diff > 1:
-            self.tail.x += x_sign
-            if y_diff > 0:
-                self.tail.y += y_sign
+            if x_diff > 1:
+                tail.x += x_sign
+                if y_diff == 1:
+                    tail.y += y_sign
 
-        if y_diff > 1:
-            self.tail.y += y_sign
-            if x_diff > 0:
-                self.tail.x += x_sign
-
+            if y_diff > 1:
+                tail.y += y_sign
+                if x_diff == 1:
+                    tail.x += x_sign
         return
 
     def move_head(self, direction: Direction):
         if direction == Direction.RIGHT:
-            self.head.x += 1
+            self.knots[0].x += 1
         elif direction == Direction.LEFT:
-            self.head.x -= 1
+            self.knots[0].x -= 1
         elif direction == Direction.UP:
-            self.head.y += 1
+            self.knots[0].y += 1
         elif direction == Direction.DOWN:
-            self.head.y -= 1
+            self.knots[0].y -= 1
         else:
             raise ValueError(f"Unknown direction {direction}")
 
@@ -92,25 +104,32 @@ class Rope:
         return f"Rope({self.head}, {self.tail})"
 
 
-def part_1(data: str) -> int:
-    moves = [
+def parse_moves(data: str) -> list[Move]:
+    return [
         Move(Direction((y := x.split(" "))[0]), int(y[1])) for x in data.split("\n")
     ]
 
-    rope = Rope.zero()
 
+def part_1(data: str) -> int:
+    moves = parse_moves(data)
+    rope = Rope.zero()
     tail_history = set()
     for move in moves:
-        # print("move", move)
         for _ in range(move.distance):
             rope.move_head(move.direction)
-            # print(rope.head, rope.tail)
-            tail_history.add((rope.tail.x, rope.tail.y))
+            tail_history.add((rope.knots[-1].x, rope.knots[-1].y))
     return len(tail_history)
 
 
 def part_2(data: str) -> int:
-    return 0
+    moves = parse_moves(data)
+    rope = Rope.zero(10)
+    tail_history = set()
+    for move in moves:
+        for m in range(move.distance):
+            rope.move_head(move.direction)
+            tail_history.add((rope.knots[-1].x, rope.knots[-1].y))
+    return len(tail_history)
 
 
 if __name__ == "__main__":
@@ -121,5 +140,6 @@ if __name__ == "__main__":
     assert part_1(EXAMPLE) == 13
     print("Part 1:", part_1(data))
     # part 2
-    # print("Part 2:", part_2(EXAMPLE))
-    # 4647 low
+    assert part_2(EXAMPLE) == 1
+    assert part_2(EXAMPLE_2) == 36
+    print("Part 2:", part_2(data))
