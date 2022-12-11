@@ -1,5 +1,6 @@
-from enum import Enum
+import math
 import re
+from enum import Enum
 from dataclasses import dataclass
 from typing import Callable
 
@@ -62,7 +63,7 @@ class Monkey:
 def parse_monkeys(data: str) -> list[Monkey]:
     monkeys = []
     digits = re.compile(r"\d+")
-    for monkey in data.split("\n\n")[:1]:
+    for monkey in data.split("\n\n"):
         lines = monkey.splitlines()
 
         id = int(digits.findall(lines[0])[0])
@@ -78,10 +79,48 @@ def parse_monkeys(data: str) -> list[Monkey]:
     return monkeys
 
 
+class KeepAway:
+    moves: list[int]
+
+    @classmethod
+    def from_str(cls, data: str) -> "KeepAway":
+        return cls(parse_monkeys(data))
+
+    def __init__(self, monkeys: list[Monkey]):
+        self.monkeys = monkeys
+        self.moves = [0 for _ in self.monkeys]
+
+    def round(self) -> None:
+        for monkey in self.monkeys:
+            for _ in range(len(monkey.items)):
+                if not monkey.items:
+                    continue
+                value = monkey.items.pop()
+                new_value = monkey.operation(value)
+                new_value = new_value // 3
+                if monkey.test(new_value):
+                    self.monkeys[monkey.throw_true].items.append(new_value)
+                else:
+                    self.monkeys[monkey.throw_false].items.append(new_value)
+                self.moves[monkey.id] += 1
+        return
+
+    def __repr__(self) -> str:
+        return "\n".join(f"{monkey.id}: {monkey.items}" for monkey in self.monkeys)
+
+
 def part_1(data: str) -> int:
-    monkeys = parse_monkeys(data)
-    print(monkeys)
-    return 0
+    game = KeepAway.from_str(data)
+    ROUNDS = 20
+    for _ in range(ROUNDS):
+        game.round()
+
+    return math.prod(
+        [
+            x[1]
+            for x in sorted(enumerate(game.moves), key=lambda x: x[1], reverse=True)[:2]
+        ]
+    )
 
 
 if __name__ == "__main__":
@@ -89,4 +128,5 @@ if __name__ == "__main__":
     with open("data/11.txt") as f:
         data = f.read()
     # part 1
-    print("part 1:", part_1(EXAMPLE))
+    assert part_1(EXAMPLE) == 10605
+    print("part 1:", part_1(data))
