@@ -46,16 +46,12 @@ def generate_operator(operation: Operation, value: int | None) -> Callable[[int]
         return lambda old: old * (value if value is not None else old)
 
 
-def generate_test(value: int) -> Callable[[int], bool]:
-    return lambda x: x % value == 0
-
-
 @dataclass
 class Monkey:
     id: int
     items: list[int]
     operation: Callable[[int], int]
-    test: Callable[[int], bool]
+    divide_by: int
     throw_true: int
     throw_false: int
 
@@ -72,10 +68,10 @@ def parse_monkeys(data: str) -> list[Monkey]:
             Operation((x := lines[2][23:].strip().split(" "))[0]),
             int(y) if (y := x[1]) != "old" else None,
         )
-        test = generate_test(int(digits.findall(lines[3])[0]))
+        divide_by = int(digits.findall(lines[3])[0])
         throw_true = int(digits.findall(lines[4])[0])
         throw_false = int(digits.findall(lines[5])[0])
-        monkeys.append(Monkey(id, items, operation, test, throw_true, throw_false))
+        monkeys.append(Monkey(id, items, operation, divide_by, throw_true, throw_false))
     return monkeys
 
 
@@ -86,9 +82,14 @@ class KeepAway:
     def from_str(cls, data: str) -> "KeepAway":
         return cls(parse_monkeys(data))
 
-    def __init__(self, monkeys: list[Monkey]):
+    def __init__(self, monkeys: list[Monkey], divide: bool = True):
         self.monkeys = monkeys
         self.moves = [0 for _ in self.monkeys]
+        self.divide = divide
+        self.modulo = self._calculate_modulo()
+
+    def _calculate_modulo(self) -> int:
+        return math.prod([x.divide_by for x in self.monkeys])
 
     def round(self) -> None:
         for monkey in self.monkeys:
@@ -97,11 +98,16 @@ class KeepAway:
                     continue
                 value = monkey.items.pop()
                 new_value = monkey.operation(value)
-                new_value = new_value // 3
-                if monkey.test(new_value):
-                    self.monkeys[monkey.throw_true].items.append(new_value)
+                if self.divide:
+                    new_value = new_value // 3
+                if new_value % monkey.divide_by == 0:
+                    self.monkeys[monkey.throw_true].items.append(
+                        new_value % self.modulo
+                    )
                 else:
-                    self.monkeys[monkey.throw_false].items.append(new_value)
+                    self.monkeys[monkey.throw_false].items.append(
+                        new_value % self.modulo
+                    )
                 self.moves[monkey.id] += 1
         return
 
@@ -109,12 +115,9 @@ class KeepAway:
         return "\n".join(f"{monkey.id}: {monkey.items}" for monkey in self.monkeys)
 
 
-def part_1(data: str) -> int:
-    game = KeepAway.from_str(data)
-    ROUNDS = 20
-    for _ in range(ROUNDS):
+def calcualte_n_iterations(game: KeepAway, rounds: int) -> int:
+    for _ in range(rounds):
         game.round()
-
     return math.prod(
         [
             x[1]
@@ -123,10 +126,26 @@ def part_1(data: str) -> int:
     )
 
 
+def part_1(data: str) -> int:
+    game = KeepAway.from_str(data)
+    ROUNDS = 20
+    return calcualte_n_iterations(game, ROUNDS)
+
+
+def part_2(data: str) -> int:
+    game = KeepAway.from_str(data)
+    game.divide = False
+    ROUNDS = 10_000
+    return calcualte_n_iterations(game, ROUNDS)
+
+
 if __name__ == "__main__":
     # data
     with open("data/11.txt") as f:
         data = f.read()
     # part 1
     assert part_1(EXAMPLE) == 10605
-    print("part 1:", part_1(data))
+    print("part 1:", part_1(EXAMPLE))
+    # part 2
+    assert part_2(EXAMPLE) == 2713310158
+    print("part 2:", part_2(data))
