@@ -14,20 +14,20 @@ class Grid:
     def __init__(
         self,
         graph: dict[complex, list[complex]],
-        points: dict[complex, int],
+        values: dict[complex, int],
         start: complex,
         end: complex,
         starts: list[complex],
     ):
         self.graph = graph
-        self.points = points
+        self.values = values
         self.start = start
         self.end = end
         self.starts = starts
 
     @classmethod
     def from_string(cls, data: str) -> "Grid":
-        points = {}
+        values = {}
         graph = defaultdict(list)
         start, starts, end = 0 + 0j, [], 0 + 0j
         for y, line in enumerate(data.splitlines()):
@@ -45,14 +45,14 @@ class Grid:
                     end = point
                 else:
                     value = string.ascii_lowercase.index(letter)
-                points[point] = value
+                values[point] = value
 
-        for point in points:
+        for point in values:
             for neighbor in [1 + 0j, -1 + 0j, 0 + 1j, 0 - 1j]:
-                if (point + neighbor) in points:
+                if (point + neighbor) in values:
                     graph[point].append(point + neighbor)
 
-        return cls(graph, points, start, end, starts)
+        return cls(graph, values, start, end, starts)
 
     def bfs(self, source: complex) -> dict[complex, int]:
         Q = [source]
@@ -63,10 +63,10 @@ class Grid:
             u = Q.pop(0)
             for v in self.graph[u]:
                 alt = dist[u] + 1
-                if alt < dist[v] and self.points[u] - self.points[v] <= 1:
+                if alt < dist[v] and self.values[u] - self.values[v] <= 1:
                     dist[v] = alt
                     Q.append(v)
-        return dist
+        return dist  # type: ignore
 
 
 def part_1(data: str) -> int:
