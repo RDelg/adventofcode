@@ -1,5 +1,5 @@
-from collections import defaultdict
 import string
+from collections import defaultdict
 
 
 EXAMPLE = """\
@@ -41,7 +41,7 @@ class Grid:
                     value = 0
                     starts.append(point)
                 elif letter == "E":
-                    value = 25
+                    value = string.ascii_lowercase.index("z")
                     end = point
                 else:
                     value = string.ascii_lowercase.index(letter)
@@ -54,29 +54,29 @@ class Grid:
 
         return cls(graph, points, start, end, starts)
 
-    def dijkstra(self, source: complex) -> dict[complex, int]:
-        Q = list(self.graph.keys())
+    def bfs(self, source: complex) -> dict[complex, int]:
+        Q = [source]
         dist = {v: float("inf") for v in self.graph}
         dist[source] = 0
 
         while Q:
-            u = min(Q, key=dist.get)  # type: ignore
-            Q.remove(u)
+            u = Q.pop(0)
             for v in self.graph[u]:
                 alt = dist[u] + 1
                 if alt < dist[v] and self.points[u] - self.points[v] <= 1:
                     dist[v] = alt
-        return dist  # type: ignore
+                    Q.append(v)
+        return dist
 
 
 def part_1(data: str) -> int:
     grid = Grid.from_string(data)
-    return grid.dijkstra(grid.end)[grid.start]
+    return grid.bfs(grid.end)[grid.start]
 
 
 def part_2(data: str) -> int:
     grid = Grid.from_string(data)
-    paths = grid.dijkstra(grid.end)
+    paths = grid.bfs(grid.end)
     return min(paths[s] for s in grid.starts)
 
 
@@ -85,7 +85,7 @@ if __name__ == "__main__":
         data = f.read()
     # Part 1
     assert part_1(EXAMPLE) == 31
-    print("Part 1:", part_1(data))
-    # Part 2
+    print("Part 1:", part_1(EXAMPLE))
+    # # Part 2
     assert part_2(EXAMPLE) == 29
     print("Part 2:", part_2(data))
