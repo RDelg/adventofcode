@@ -17,29 +17,23 @@ class Grid:
         values: dict[complex, int],
         start: complex,
         end: complex,
-        starts: list[complex],
     ):
         self.graph = graph
         self.values = values
         self.start = start
         self.end = end
-        self.starts = starts
 
     @classmethod
     def from_string(cls, data: str) -> "Grid":
         values = {}
         graph = defaultdict(list)
-        start, starts, end = 0 + 0j, [], 0 + 0j
+        start = end = 0 + 0j
         for y, line in enumerate(data.splitlines()):
             for x, letter in enumerate(line):
                 point = complex(x, y)
                 if letter == "S":
-                    value = 0
+                    value = string.ascii_lowercase.index("a")
                     start = point
-                    starts.append(point)
-                elif letter == "a":
-                    value = 0
-                    starts.append(point)
                 elif letter == "E":
                     value = string.ascii_lowercase.index("z")
                     end = point
@@ -52,7 +46,10 @@ class Grid:
                 if (point + neighbor) in values:
                     graph[point].append(point + neighbor)
 
-        return cls(graph, values, start, end, starts)
+        return cls(graph, values, start, end)
+
+    def get_starts(self) -> list[complex]:
+        return [point for point in self.values if self.values[point] == 0]
 
     def bfs(self, source: complex) -> dict[complex, int]:
         Q = [source]
@@ -76,8 +73,8 @@ def part_1(data: str) -> int:
 
 def part_2(data: str) -> int:
     grid = Grid.from_string(data)
-    paths = grid.bfs(grid.end)
-    return min(paths[s] for s in grid.starts)
+    dists = grid.bfs(grid.end)
+    return min(dists[s] for s in grid.get_starts())
 
 
 if __name__ == "__main__":
