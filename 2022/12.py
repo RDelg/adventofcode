@@ -82,7 +82,7 @@ if __name__ == "__main__":
         data = f.read()
     # Part 1
     assert part_1(EXAMPLE) == 31
-    print("Part 1:", part_1(EXAMPLE))
+    print("Part 1:", part_1(data))
     # # Part 2
     assert part_2(EXAMPLE) == 29
     print("Part 2:", part_2(data))
