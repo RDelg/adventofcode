@@ -71,9 +71,6 @@ class Cave:
         self,
         drop: complex | None = None,
     ) -> complex | None:
-        if drop is not None and self.space.get(drop, None) == "o":
-            print("ASD")
-            return None
         drop = self.sand_source if drop is None else drop
         if not self.add_floor and (
             drop.imag >= self.y_max
