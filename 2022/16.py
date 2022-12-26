@@ -1,5 +1,4 @@
 import math
-import random
 import re
 from collections import defaultdict
 from typing import NamedTuple
@@ -115,10 +114,6 @@ class Environment:
                 / (self._max_flow_rate)
             )
         )
-        if self.time == self.max_time:
-            reward -= 10
-        if self._n_valves_with_flow == 0:
-            reward += 10
 
         return StepInfo(
             self.time == self.max_time or self._n_valves_with_flow == 0,
@@ -131,15 +126,14 @@ class SarsaLearner:
     def __init__(
         self,
         env: Environment,
-        epsilon: float = 0.5,
         gamma: float = 0.9,
         alpha: float = 0.1,
+        c: float = 10.0,
     ):
         self.env = env
-        self.epsilon = epsilon
         self.gamma = gamma
         self.alpha = alpha
-        self.c = 10
+        self.c = c
         self.reset()
 
     def reset(self):
@@ -156,30 +150,21 @@ class SarsaLearner:
     def _episode(self):
         state, done, reward = self.env.reset(), False, 0.0
         while not done:
-            action = self._choose_action(self.Q, state, 0.0)
+            action = self._choose_action(self.Q, state)
             self.action_count[(state, action)] += 1
             done, next_state, reward = self.env.step(action)
-            # double q learning
-            # if random.random() < 0.5:
-            #     Q = self.Q
-            #     target_Q = self.Q2
-            # else:
-            #     Q = self.Q2
-            #     target_Q = self.Q
             # on policy q learning
-            # uncomment the following line and comment the above 4 lines
             Q = self.Q
             target_Q = self.Q
-
             self._update_Q(Q, target_Q, state, action, reward, next_state)
             state = next_state
 
-    def _choose_action(
-        self, Q: dict[tuple[State, str], float], state: State, epsilon: float
-    ) -> str:
+    # greedy policy with UCB
+    def _choose_action(self, Q: dict[tuple[State, str], float], state: State) -> str:
         actions = self.env.legal_actions(state)
         Qs = [
             Q[(state, action)]
+            # UCB (upper confidence bound)
             + (
                 self.c
                 * math.sqrt(
@@ -189,11 +174,7 @@ class SarsaLearner:
             )
             for action in actions
         ]
-        return (
-            random.choice(actions)
-            if random.random() < epsilon
-            else actions[Qs.index(max(Qs))]
-        )
+        return actions[Qs.index(max(Qs))]
 
     def _update_Q(
         self,
@@ -204,16 +185,10 @@ class SarsaLearner:
         reward: float,
         next_state: State,
     ):
-        next_action = self._choose_action(target_Q, next_state, 0.0)
-        # soft decay of alpha based on number of iterations
-        # alpha = max(0.01, self.alpha / (1 + self.iterations / 1000))
-
-        # print(alpha)
+        next_action = self._choose_action(target_Q, next_state)
         x = self.alpha * (
             (reward + self.gamma * Q[(next_state, next_action)]) - Q[(state, action)]
         )
-        # print(state, action, x)
-        # print(x)
         Q[(state, action)] = Q[(state, action)] + x
         self.iterations += 1
 
@@ -221,11 +196,11 @@ class SarsaLearner:
 def part_1(data: str, iterations: int = 100_000) -> int:
     g = Graph(data)
     env = Environment.from_graph(g)
-    learner = SarsaLearner(env, epsilon=0.3, gamma=0.9, alpha=0.1)
+    learner = SarsaLearner(env, gamma=0.9, alpha=0.1)
     learner.learn(iterations)
     state, done, _ = env.reset(), False, 0
     while not done:
-        action = learner._choose_action(learner.Q, state, epsilon=0.0)
+        action = learner._choose_action(learner.Q, state)
         done, next_state, _ = env.step(action)
         state = next_state
     print(
@@ -248,6 +223,6 @@ if __name__ == "__main__":
         data = f.read()
     # part 1
     print(part_1(EXAMPLE, 10_000), "should be 1651")  # 1651
-    # print(part_1(data, 10_000))  # 1376
+    print(part_1(data, 5_000), "should be 1376")  # 1376
     # part 2
     # print(part_2(EXAMPLE))  # 1707
