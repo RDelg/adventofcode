@@ -48,7 +48,7 @@ def part_2(data: str) -> int:
         map(
             lambda x: (int(x[0] + x[1])),
             [
-                ((x := [c for c in line if not c.isalpha()])[0], x[-1])
+                ((x := [c for c in line if c.isnumeric()])[0], x[-1])
                 for line in data.splitlines()
             ],
         )
