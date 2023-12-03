@@ -67,13 +67,29 @@ class Engine(NamedTuple):
 
                 if len(neighbours):
                     value += self.numbers[i][j]
-                    # self.numbers[i][j] = sum(map(int, neighbours))
         return value
 
     def gear_ratio(self) -> int:
-        # print(self.get_grid_neighbours(x=2, 0))
         value = 0
-        print(self.gears)
+        for gear in self.gears:
+            neighbours = set()
+            for i in range(-1, 2):
+                for j in range(-1, 2):
+                    if i == j == 0:
+                        continue
+                    if 0 <= gear[0] + i < self.width and 0 <= gear[1] + j < self.height:
+                        # print(gear, self.numbers_pos[gear[1] + j])
+                        for k, pos in enumerate(self.numbers_pos[gear[1] + j]):
+                            # print(gear, pos)
+                            if pos[0] <= gear[0] + i < pos[1]:
+                                # print("x", gear[1] + j, pos[0])
+                                neighbours.add(self.numbers[gear[1] + j][k])
+                        # if pos[0] <= gear[0] + i < pos[1]:
+                        #     neighbours.add(self.numbers[gear[1] + j][pos[0]])
+
+            if len(neighbours) == 2:
+                value += neighbours.pop() * neighbours.pop()
+
         return value
 
 
@@ -106,5 +122,5 @@ if __name__ == "__main__":
     assert (part_1(EXAMPLE)) == 4361
     print(f"{part_1(data)=}")
 
-    # assert (part_2(EXAMPLE)) == 30
-    print(f"{part_2(EXAMPLE)=}")
+    assert (part_2(EXAMPLE)) == 467835
+    print(f"{part_2(data)=}")
