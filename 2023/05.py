@@ -1,4 +1,3 @@
-from itertools import chain
 from typing import NamedTuple
 
 EXAMPLE = """\
@@ -34,76 +33,65 @@ temperature-to-humidity map:
 
 humidity-to-location map:
 60 56 37
-56 93 4"""
-
-
-class Range(NamedTuple):
-    start: int
-    length: int
-
-    @property
-    def end(self) -> int:
-        return self.start + self.length
-
-    def __contains__(self, item: int) -> bool:
-        return self.start <= item < self.end
-
-    def __repr__(self) -> str:
-        return f"Range(start={self.start}, length={self.length})"
+56 93 48"""
 
 
 class Mapper(NamedTuple):
-    name: str
-    mappers: list[tuple[Range, Range]]
-
-    def map(self, value: int) -> int:
-        for input_range, output_range in self.mappers:
-            if value in input_range:
-                # print(f"{i}: {self.name}: {value=} {input_range=} {output_range=}")
-                return output_range.start + value - input_range.start
-        return value
-
-    @classmethod
-    def from_str(cls, data: str) -> "Mapper":
-        name, ranges = data.split(":")
-        ranges = [
-            (Range((x := list(map(int, r.split())))[1], x[2]), Range(x[0], x[2]))
-            for r in ranges.strip().split("\n")
-        ]
-
-        return cls(name=name, mappers=ranges)
+    a: int
+    b: int
+    delta: int
 
 
-class Farm(NamedTuple):
-    mappers: list[Mapper]
-
-    def map(self, value: int) -> int:
-        for mapper in self.mappers:
-            value = mapper.map(value)
-        return value
-
-    @classmethod
-    def from_list(cls, data: list[str]) -> "Farm":
-        return cls(mappers=[Mapper.from_str(x) for x in data])
-
-
-def parse(data: str) -> tuple[list[int], Farm]:
+def parse(data: str) -> tuple[list[int], list[list[Mapper]]]:
     parsed = data.split("\n\n")
     seeds = list(map(int, parsed[0].split()[1:]))
-    farm = Farm.from_list(parsed[1:])
-    return seeds, farm
+    mappers = [
+        [
+            (Mapper((y := list(map(int, r.split())))[0], y[1], y[2]))
+            for r in x.split("\n")[1:]
+        ]
+        for x in parsed[1:]
+    ]
+    return seeds, mappers
+
+
+def farm(
+    seeds: list[tuple[int, int]], mappers: list[list[Mapper]]
+) -> list[tuple[int, int]]:
+    for intervals in mappers:
+        images = list()
+        while seeds:
+            x, y = seeds.pop()
+            for interval in intervals:
+                right = interval.b + interval.delta - 1
+                if interval.b <= x <= y <= right:
+                    images.append(
+                        (x - interval.b + interval.a, y - interval.b + interval.a)
+                    )
+                    break
+                if interval.b <= x <= right < y:
+                    seeds.extend([(x, right), (right + 1, y)])
+                    break
+            else:
+                images.append((x, y))
+        seeds = images
+    return seeds
 
 
 def part_1(data: str) -> int:
-    seeds, farm = parse(data)
-    locations = [farm.map(x) for x in seeds]
-    return min(locations)
+    seeds_raw, mappers = parse(data)
+    seeds: list[tuple[int, int]] = [
+        (seeds_raw[i], seeds_raw[i]) for i in range(len(seeds_raw))
+    ]
+    seeds = farm(seeds, mappers)
+    return min([x[0] for x in seeds])
 
 
 def part_2(data: str) -> int:
-    seeds, farm = parse(data)
-    # TODO
-    # return min(locations)
+    seeds, mappers = parse(data)
+    seeds = [(seeds[i], seeds[i] + seeds[i + 1] - 1) for i in range(0, len(seeds), 2)]
+    seeds = farm(seeds, mappers)
+    return min([x[0] for x in seeds])
 
 
 if __name__ == "__main__":
@@ -113,4 +101,4 @@ if __name__ == "__main__":
     print(f"{part_1(data) = }")
 
     assert (part_2(EXAMPLE)) == 46
-    print(f"{part_2(EXAMPLE) = }")
+    print(f"{part_2(data) = }")
