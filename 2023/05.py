@@ -59,13 +59,13 @@ def farm(
     seeds: list[tuple[int, int]], mappers: list[list[Mapper]]
 ) -> list[tuple[int, int]]:
     for intervals in mappers:
-        images = list()
+        new_seeds = list()
         while seeds:
             x, y = seeds.pop()
             for interval in intervals:
                 right = interval.b + interval.delta - 1
                 if interval.b <= x <= y <= right:
-                    images.append(
+                    new_seeds.append(
                         (x - interval.b + interval.a, y - interval.b + interval.a)
                     )
                     break
@@ -73,8 +73,8 @@ def farm(
                     seeds.extend([(x, right), (right + 1, y)])
                     break
             else:
-                images.append((x, y))
-        seeds = images
+                new_seeds.append((x, y))
+        seeds = new_seeds
     return seeds
 
 
