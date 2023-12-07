@@ -64,11 +64,13 @@ def farm(
             x, y = seeds.pop()
             for interval in intervals:
                 right = interval.b + interval.delta - 1
+                # convert
                 if interval.b <= x <= y <= right:
                     new_seeds.append(
                         (x - interval.b + interval.a, y - interval.b + interval.a)
                     )
                     break
+                # split
                 if interval.b <= x <= right < y:
                     seeds.extend([(x, right), (right + 1, y)])
                     break
