@@ -1,5 +1,3 @@
-import re
-
 EXAMPLE_1 = """\
 .....
 .S-7.
