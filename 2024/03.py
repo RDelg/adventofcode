@@ -21,7 +21,6 @@ def part_2(data: str) -> int:
             state = dd
 
     return val
-    # return sum(int(x) * int(y) for x, y in mul_reg.findall(data))
 
 
 if __name__ == "__main__":
