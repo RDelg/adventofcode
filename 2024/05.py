@@ -86,9 +86,10 @@ def part_2(raw: str) -> int:
             sorted = False
             for i, j in generate_index_pairs(seq):
                 pair = (seq[i], seq[j])
-                if any(r.after == pair[1] and r.before == pair[0] for r in rules_by_before[pair[0]]):
-                    seq[i], seq[j] = seq[j], seq[i]
-                    break
+                for r in rules_by_before[pair[0]]:
+                    if r.after == pair[1] and r.before == pair[0]:
+                        seq[i], seq[j] = seq[j], seq[i]
+                        break
         if not sorted:
             v += seq[len(seq) // 2]
 
